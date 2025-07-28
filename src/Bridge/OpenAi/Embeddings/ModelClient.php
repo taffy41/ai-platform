@@ -9,28 +9,27 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\AI\Platform\Bridge\Albert;
+namespace Symfony\AI\Platform\Bridge\OpenAi\Embeddings;
 
 use Symfony\AI\Platform\Bridge\OpenAi\Embeddings;
 use Symfony\AI\Platform\Exception\InvalidArgumentException;
 use Symfony\AI\Platform\Model;
-use Symfony\AI\Platform\ModelClientInterface;
+use Symfony\AI\Platform\ModelClientInterface as PlatformResponseFactory;
 use Symfony\AI\Platform\Result\RawHttpResult;
-use Symfony\AI\Platform\Result\RawResultInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * @author Oskar Stark <oskarstark@googlemail.com>
+ * @author Christopher Hertel <mail@christopher-hertel.de>
  */
-final readonly class EmbeddingsModelClient implements ModelClientInterface
+final readonly class ModelClient implements PlatformResponseFactory
 {
     public function __construct(
         private HttpClientInterface $httpClient,
-        #[\SensitiveParameter] private string $apiKey,
-        private string $baseUrl,
+        #[\SensitiveParameter]
+        private string $apiKey,
     ) {
         '' !== $apiKey || throw new InvalidArgumentException('The API key must not be empty.');
-        '' !== $baseUrl || throw new InvalidArgumentException('The base URL must not be empty.');
+        str_starts_with($apiKey, 'sk-') || throw new InvalidArgumentException('The API key must start with "sk-".');
     }
 
     public function supports(Model $model): bool
@@ -38,11 +37,14 @@ final readonly class EmbeddingsModelClient implements ModelClientInterface
         return $model instanceof Embeddings;
     }
 
-    public function request(Model $model, array|string $payload, array $options = []): RawResultInterface
+    public function request(Model $model, array|string $payload, array $options = []): RawHttpResult
     {
-        return new RawHttpResult($this->httpClient->request('POST', \sprintf('%s/embeddings', $this->baseUrl), [
+        return new RawHttpResult($this->httpClient->request('POST', 'https://api.openai.com/v1/embeddings', [
             'auth_bearer' => $this->apiKey,
-            'json' => \is_array($payload) ? array_merge($payload, $options) : $payload,
+            'json' => array_merge($options, [
+                'model' => $model->getName(),
+                'input' => $payload,
+            ]),
         ]));
     }
 }

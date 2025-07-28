@@ -12,7 +12,7 @@
 namespace Symfony\AI\Platform\Bridge\LMStudio\Completions;
 
 use Symfony\AI\Platform\Bridge\LMStudio\Completions;
-use Symfony\AI\Platform\Bridge\OpenAI\GPT\ResultConverter as OpenAIResponseConverter;
+use Symfony\AI\Platform\Bridge\OpenAi\GPT\ResultConverter as OpenAiResponseConverter;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\RawResultInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
@@ -24,7 +24,7 @@ use Symfony\AI\Platform\ResultConverterInterface;
 final class ResultConverter implements ResultConverterInterface
 {
     public function __construct(
-        private readonly OpenAIResponseConverter $gptResponseConverter = new OpenAIResponseConverter(),
+        private readonly OpenAiResponseConverter $gptResponseConverter = new OpenAiResponseConverter(),
     ) {
     }
 
