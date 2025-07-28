@@ -12,7 +12,7 @@
 namespace Symfony\AI\Platform\Bridge\LMStudio\Completions;
 
 use Symfony\AI\Platform\Bridge\LMStudio\Completions;
-use Symfony\AI\Platform\Bridge\OpenAi\GPT\ResultConverter as OpenAiResponseConverter;
+use Symfony\AI\Platform\Bridge\OpenAi\Gpt\ResultConverter as OpenAiResponseConverter;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\RawResultInterface;
 use Symfony\AI\Platform\Result\ResultInterface;

@@ -11,7 +11,7 @@
 
 namespace Symfony\AI\Platform\Bridge\Azure\OpenAi;
 
-use Symfony\AI\Platform\Bridge\OpenAi\GPT;
+use Symfony\AI\Platform\Bridge\OpenAi\Gpt;
 use Symfony\AI\Platform\Exception\InvalidArgumentException;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\ModelClientInterface;
@@ -22,7 +22,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 /**
  * @author Christopher Hertel <mail@christopher-hertel.de>
  */
-final readonly class GPTModelClient implements ModelClientInterface
+final readonly class GptModelClient implements ModelClientInterface
 {
     private EventSourceHttpClient $httpClient;
 
@@ -43,7 +43,7 @@ final readonly class GPTModelClient implements ModelClientInterface
 
     public function supports(Model $model): bool
     {
-        return $model instanceof GPT;
+        return $model instanceof Gpt;
     }
 
     public function request(Model $model, object|array|string $payload, array $options = []): RawHttpResult
