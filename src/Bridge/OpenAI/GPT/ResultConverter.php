@@ -149,7 +149,7 @@ final class ResultConverter implements PlatformResponseConverter
 
     /**
      * @param array{
-     *     index: integer,
+     *     index: int,
      *     message: array{
      *         role: 'assistant',
      *         content: ?string,

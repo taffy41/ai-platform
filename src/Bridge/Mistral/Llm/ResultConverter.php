@@ -152,7 +152,7 @@ final readonly class ResultConverter implements ResultConverterInterface
 
     /**
      * @param array{
-     *     index: integer,
+     *     index: int,
      *     message: array{
      *         role: 'assistant',
      *         content: ?string,
