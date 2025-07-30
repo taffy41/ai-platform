@@ -65,11 +65,11 @@ final readonly class ClaudeModelClient implements ModelClientInterface
         $data = json_decode($bedrockResponse->getBody(), true, 512, \JSON_THROW_ON_ERROR);
 
         if (!isset($data['content']) || [] === $data['content']) {
-            throw new RuntimeException('Response does not contain any content');
+            throw new RuntimeException('Response does not contain any content.');
         }
 
         if (!isset($data['content'][0]['text']) && !isset($data['content'][0]['type'])) {
-            throw new RuntimeException('Response content does not contain any text or type');
+            throw new RuntimeException('Response content does not contain any text or type.');
         }
 
         $toolCalls = [];

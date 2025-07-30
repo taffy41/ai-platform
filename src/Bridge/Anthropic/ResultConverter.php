@@ -45,7 +45,7 @@ class ResultConverter implements ResultConverterInterface
         $data = $result->getData();
 
         if (!isset($data['content']) || [] === $data['content']) {
-            throw new RuntimeException('Response does not contain any content');
+            throw new RuntimeException('Response does not contain any content.');
         }
 
         $toolCalls = [];

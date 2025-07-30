@@ -33,11 +33,11 @@ final readonly class ResultConverter implements ResultConverterInterface
         $data = $result->getData();
 
         if (!isset($data['choices'][0]['message'])) {
-            throw new RuntimeException('Response does not contain message');
+            throw new RuntimeException('Response does not contain message.');
         }
 
         if (!isset($data['choices'][0]['message']['content'])) {
-            throw new RuntimeException('Message does not contain content');
+            throw new RuntimeException('Message does not contain content.');
         }
 
         return new TextResult($data['choices'][0]['message']['content']);

@@ -51,13 +51,13 @@ final readonly class ResultConverter implements ResultConverterInterface
         }
 
         if (200 !== $code = $httpResponse->getStatusCode()) {
-            throw new RuntimeException(\sprintf('Unexpected response code %d: %s', $code, $httpResponse->getContent(false)));
+            throw new RuntimeException(\sprintf('Unexpected response code %d: ', $code).$httpResponse->getContent(false));
         }
 
         $data = $result->getData();
 
         if (!isset($data['choices'])) {
-            throw new RuntimeException('Response does not contain choices');
+            throw new RuntimeException('Response does not contain choices.');
         }
 
         /** @var Choice[] $choices */

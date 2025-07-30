@@ -34,7 +34,7 @@ class LlamaResultConverter implements ResultConverterInterface
         $data = $result->getData();
 
         if (!isset($data['generation'])) {
-            throw new RuntimeException('Response does not contain any content');
+            throw new RuntimeException('Response does not contain any content.');
         }
 
         return new TextResult($data['generation']);

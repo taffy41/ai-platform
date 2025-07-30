@@ -46,7 +46,7 @@ final readonly class ResultConverter implements ResultConverterInterface
         $data = $result->getData();
 
         if (!isset($data['candidates'][0]['content']['parts'][0])) {
-            throw new RuntimeException('Response does not contain any content');
+            throw new RuntimeException('Response does not contain any content.');
         }
 
         /** @var Choice[] $choices */
@@ -91,7 +91,7 @@ final readonly class ResultConverter implements ResultConverterInterface
                 try {
                     $data = json_decode($delta, true, 512, \JSON_THROW_ON_ERROR);
                 } catch (\JsonException $e) {
-                    throw new RuntimeException('Failed to decode JSON response', 0, $e);
+                    throw new RuntimeException('Failed to decode JSON response.', 0, $e);
                 }
 
                 /** @var Choice[] $choices */

@@ -34,7 +34,7 @@ final readonly class LlamaResultConverter implements ResultConverterInterface
         $data = $result->getData();
 
         if (!isset($data['output'])) {
-            throw new RuntimeException('Response does not contain output');
+            throw new RuntimeException('Response does not contain output.');
         }
 
         return new TextResult(implode('', $data['output']));

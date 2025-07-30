@@ -34,7 +34,7 @@ final readonly class ResultConverter implements ResultConverterInterface
         $data = $result->getData();
 
         if (!isset($data['embeddings'])) {
-            throw new RuntimeException('Response does not contain data');
+            throw new RuntimeException('Response does not contain data.');
         }
 
         return new VectorResult(

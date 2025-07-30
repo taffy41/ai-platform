@@ -54,7 +54,7 @@ final class ResultConverter implements PlatformResponseConverter
         }
 
         if (!isset($data['choices'])) {
-            throw new RuntimeException('Response does not contain choices');
+            throw new RuntimeException('Response does not contain choices.');
         }
 
         /** @var Choice[] $choices */

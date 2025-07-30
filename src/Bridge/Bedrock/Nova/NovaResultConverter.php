@@ -35,11 +35,11 @@ class NovaResultConverter implements ResultConverterInterface
         $data = $result->getData();
 
         if (!isset($data['output']) || [] === $data['output']) {
-            throw new RuntimeException('Response does not contain any content');
+            throw new RuntimeException('Response does not contain any content.');
         }
 
         if (!isset($data['output']['message']['content'][0]['text'])) {
-            throw new RuntimeException('Response content does not contain any text');
+            throw new RuntimeException('Response content does not contain any text.');
         }
 
         $toolCalls = [];
