@@ -9,9 +9,9 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\AI\Platform\Bridge\LMStudio\Completions;
+namespace Symfony\AI\Platform\Bridge\LmStudio\Completions;
 
-use Symfony\AI\Platform\Bridge\LMStudio\Completions;
+use Symfony\AI\Platform\Bridge\LmStudio\Completions;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\ModelClientInterface as PlatformResponseFactory;
 use Symfony\AI\Platform\Result\RawHttpResult;

@@ -9,9 +9,9 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\AI\Platform\Bridge\LMStudio\Embeddings;
+namespace Symfony\AI\Platform\Bridge\LmStudio\Embeddings;
 
-use Symfony\AI\Platform\Bridge\LMStudio\Embeddings;
+use Symfony\AI\Platform\Bridge\LmStudio\Embeddings;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\ModelClientInterface as PlatformResponseFactory;
 use Symfony\AI\Platform\Result\RawHttpResult;

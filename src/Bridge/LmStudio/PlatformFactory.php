@@ -9,9 +9,9 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\AI\Platform\Bridge\LMStudio;
+namespace Symfony\AI\Platform\Bridge\LmStudio;
 
-use Symfony\AI\Platform\Bridge\LMStudio\Embeddings\ModelClient;
+use Symfony\AI\Platform\Bridge\LmStudio\Embeddings\ModelClient;
 use Symfony\AI\Platform\Contract;
 use Symfony\AI\Platform\Platform;
 use Symfony\Component\HttpClient\EventSourceHttpClient;

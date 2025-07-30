@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\AI\Platform\Bridge\LMStudio;
+namespace Symfony\AI\Platform\Bridge\LmStudio;
 
 use Symfony\AI\Platform\Model;
 
