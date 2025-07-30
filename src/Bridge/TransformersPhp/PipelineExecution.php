@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\AI\Platform\Bridge\TransformersPHP;
+namespace Symfony\AI\Platform\Bridge\TransformersPhp;
 
 use Codewithkyrian\Transformers\Pipelines\Pipeline;
 
