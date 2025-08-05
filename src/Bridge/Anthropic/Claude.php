@@ -29,6 +29,7 @@ class Claude extends Model
     public const OPUS_3 = 'claude-3-opus-20240229';
     public const OPUS_4 = 'claude-opus-4-20250514';
     public const OPUS_4_0 = 'claude-opus-4-0';
+    public const OPUS_4_1 = 'claude-opus-4-1';
 
     /**
      * @param array<string, mixed> $options The default options for the model usage
