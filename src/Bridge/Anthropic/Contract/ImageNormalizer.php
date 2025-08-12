@@ -23,16 +23,6 @@ use function Symfony\Component\String\u;
  */
 final class ImageNormalizer extends ModelContractNormalizer
 {
-    protected function supportedDataClass(): string
-    {
-        return Image::class;
-    }
-
-    protected function supportsModel(Model $model): bool
-    {
-        return $model instanceof Claude;
-    }
-
     /**
      * @param Image $data
      *
@@ -48,5 +38,15 @@ final class ImageNormalizer extends ModelContractNormalizer
                 'data' => $data->asBase64(),
             ],
         ];
+    }
+
+    protected function supportedDataClass(): string
+    {
+        return Image::class;
+    }
+
+    protected function supportsModel(Model $model): bool
+    {
+        return $model instanceof Claude;
     }
 }

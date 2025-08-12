@@ -25,16 +25,6 @@ final class ToolCallMessageNormalizer extends ModelContractNormalizer implements
 {
     use NormalizerAwareTrait;
 
-    protected function supportedDataClass(): string
-    {
-        return ToolCallMessage::class;
-    }
-
-    protected function supportsModel(Model $model): bool
-    {
-        return $model instanceof Nova;
-    }
-
     /**
      * @param ToolCallMessage $data
      *
@@ -61,5 +51,15 @@ final class ToolCallMessageNormalizer extends ModelContractNormalizer implements
                 ],
             ],
         ];
+    }
+
+    protected function supportedDataClass(): string
+    {
+        return ToolCallMessage::class;
+    }
+
+    protected function supportsModel(Model $model): bool
+    {
+        return $model instanceof Nova;
     }
 }

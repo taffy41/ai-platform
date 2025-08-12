@@ -26,16 +26,6 @@ use function Symfony\Component\String\u;
  */
 final class UserMessageNormalizer extends ModelContractNormalizer
 {
-    protected function supportedDataClass(): string
-    {
-        return UserMessage::class;
-    }
-
-    protected function supportsModel(Model $model): bool
-    {
-        return $model instanceof Nova;
-    }
-
     /**
      * @param UserMessage $data
      *
@@ -68,5 +58,15 @@ final class UserMessageNormalizer extends ModelContractNormalizer
         }
 
         return $array;
+    }
+
+    protected function supportedDataClass(): string
+    {
+        return UserMessage::class;
+    }
+
+    protected function supportsModel(Model $model): bool
+    {
+        return $model instanceof Nova;
     }
 }

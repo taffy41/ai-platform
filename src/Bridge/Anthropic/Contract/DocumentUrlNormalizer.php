@@ -21,16 +21,6 @@ use Symfony\AI\Platform\Model;
  */
 final class DocumentUrlNormalizer extends ModelContractNormalizer
 {
-    protected function supportedDataClass(): string
-    {
-        return DocumentUrl::class;
-    }
-
-    protected function supportsModel(Model $model): bool
-    {
-        return $model instanceof Claude;
-    }
-
     /**
      * @param DocumentUrl $data
      *
@@ -45,5 +35,15 @@ final class DocumentUrlNormalizer extends ModelContractNormalizer
                 'url' => $data->url,
             ],
         ];
+    }
+
+    protected function supportedDataClass(): string
+    {
+        return DocumentUrl::class;
+    }
+
+    protected function supportsModel(Model $model): bool
+    {
+        return $model instanceof Claude;
     }
 }

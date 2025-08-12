@@ -23,16 +23,6 @@ use Symfony\AI\Platform\Model;
  */
 final class UserMessageNormalizer extends ModelContractNormalizer
 {
-    protected function supportedDataClass(): string
-    {
-        return UserMessage::class;
-    }
-
-    protected function supportsModel(Model $model): bool
-    {
-        return $model instanceof Gemini;
-    }
-
     /**
      * @param UserMessage $data
      *
@@ -54,5 +44,15 @@ final class UserMessageNormalizer extends ModelContractNormalizer
         }
 
         return $parts;
+    }
+
+    protected function supportedDataClass(): string
+    {
+        return UserMessage::class;
+    }
+
+    protected function supportsModel(Model $model): bool
+    {
+        return $model instanceof Gemini;
     }
 }

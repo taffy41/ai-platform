@@ -28,16 +28,6 @@ final class LlamaMessageBagNormalizer extends ModelContractNormalizer
     ) {
     }
 
-    protected function supportedDataClass(): string
-    {
-        return MessageBagInterface::class;
-    }
-
-    protected function supportsModel(Model $model): bool
-    {
-        return $model instanceof Llama;
-    }
-
     /**
      * @param MessageBagInterface $data
      *
@@ -49,5 +39,15 @@ final class LlamaMessageBagNormalizer extends ModelContractNormalizer
             'system' => $this->promptConverter->convertMessage($data->getSystemMessage() ?? new SystemMessage('')),
             'prompt' => $this->promptConverter->convertToPrompt($data->withoutSystemMessage()),
         ];
+    }
+
+    protected function supportedDataClass(): string
+    {
+        return MessageBagInterface::class;
+    }
+
+    protected function supportsModel(Model $model): bool
+    {
+        return $model instanceof Llama;
     }
 }

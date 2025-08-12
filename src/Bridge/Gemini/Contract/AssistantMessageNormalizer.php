@@ -21,16 +21,6 @@ use Symfony\AI\Platform\Model;
  */
 final class AssistantMessageNormalizer extends ModelContractNormalizer
 {
-    protected function supportedDataClass(): string
-    {
-        return AssistantMessage::class;
-    }
-
-    protected function supportsModel(Model $model): bool
-    {
-        return $model instanceof Gemini;
-    }
-
     /**
      * @param AssistantMessage $data
      *
@@ -56,5 +46,15 @@ final class AssistantMessageNormalizer extends ModelContractNormalizer
         }
 
         return [$normalized];
+    }
+
+    protected function supportedDataClass(): string
+    {
+        return AssistantMessage::class;
+    }
+
+    protected function supportsModel(Model $model): bool
+    {
+        return $model instanceof Gemini;
     }
 }
