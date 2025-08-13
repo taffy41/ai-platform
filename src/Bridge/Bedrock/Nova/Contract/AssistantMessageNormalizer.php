@@ -22,16 +22,6 @@ use Symfony\AI\Platform\Result\ToolCall;
  */
 final class AssistantMessageNormalizer extends ModelContractNormalizer
 {
-    protected function supportedDataClass(): string
-    {
-        return AssistantMessage::class;
-    }
-
-    protected function supportsModel(Model $model): bool
-    {
-        return $model instanceof Nova;
-    }
-
     /**
      * @param AssistantMessage $data
      *
@@ -68,5 +58,15 @@ final class AssistantMessageNormalizer extends ModelContractNormalizer
             'role' => 'assistant',
             'content' => [['text' => $data->content]],
         ];
+    }
+
+    protected function supportedDataClass(): string
+    {
+        return AssistantMessage::class;
+    }
+
+    protected function supportsModel(Model $model): bool
+    {
+        return $model instanceof Nova;
     }
 }

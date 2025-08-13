@@ -25,16 +25,6 @@ final class MessageBagNormalizer extends ModelContractNormalizer implements Norm
 {
     use NormalizerAwareTrait;
 
-    protected function supportedDataClass(): string
-    {
-        return MessageBagInterface::class;
-    }
-
-    protected function supportsModel(Model $model): bool
-    {
-        return $model instanceof Nova;
-    }
-
     /**
      * @param MessageBagInterface $data
      *
@@ -54,5 +44,15 @@ final class MessageBagNormalizer extends ModelContractNormalizer implements Norm
         $array['messages'] = $this->normalizer->normalize($data->withoutSystemMessage()->getMessages(), $format, $context);
 
         return $array;
+    }
+
+    protected function supportedDataClass(): string
+    {
+        return MessageBagInterface::class;
+    }
+
+    protected function supportsModel(Model $model): bool
+    {
+        return $model instanceof Nova;
     }
 }

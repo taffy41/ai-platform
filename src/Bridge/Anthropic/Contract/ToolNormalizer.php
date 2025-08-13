@@ -24,16 +24,6 @@ use Symfony\AI\Platform\Tool\Tool;
  */
 class ToolNormalizer extends ModelContractNormalizer
 {
-    protected function supportedDataClass(): string
-    {
-        return Tool::class;
-    }
-
-    protected function supportsModel(Model $model): bool
-    {
-        return $model instanceof Claude;
-    }
-
     /**
      * @param Tool $data
      *
@@ -50,5 +40,15 @@ class ToolNormalizer extends ModelContractNormalizer
             'description' => $data->description,
             'input_schema' => $data->parameters ?? ['type' => 'object'],
         ];
+    }
+
+    protected function supportedDataClass(): string
+    {
+        return Tool::class;
+    }
+
+    protected function supportsModel(Model $model): bool
+    {
+        return $model instanceof Claude;
     }
 }

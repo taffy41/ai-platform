@@ -21,16 +21,6 @@ use Symfony\AI\Platform\Model;
  */
 final class ToolCallMessageNormalizer extends ModelContractNormalizer
 {
-    protected function supportedDataClass(): string
-    {
-        return ToolCallMessage::class;
-    }
-
-    protected function supportsModel(Model $model): bool
-    {
-        return $model instanceof Gemini;
-    }
-
     /**
      * @param ToolCallMessage $data
      *
@@ -55,5 +45,15 @@ final class ToolCallMessageNormalizer extends ModelContractNormalizer
                 ],
             ]),
         ]];
+    }
+
+    protected function supportedDataClass(): string
+    {
+        return ToolCallMessage::class;
+    }
+
+    protected function supportsModel(Model $model): bool
+    {
+        return $model instanceof Gemini;
     }
 }

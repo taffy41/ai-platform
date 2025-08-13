@@ -24,16 +24,6 @@ use Symfony\AI\Platform\Tool\Tool;
  */
 final class ToolNormalizer extends ModelContractNormalizer
 {
-    protected function supportedDataClass(): string
-    {
-        return Tool::class;
-    }
-
-    protected function supportsModel(Model $model): bool
-    {
-        return $model instanceof Gemini;
-    }
-
     /**
      * @param Tool $data
      *
@@ -50,6 +40,16 @@ final class ToolNormalizer extends ModelContractNormalizer
             'name' => $data->name,
             'parameters' => $data->parameters ? $this->removeAdditionalProperties($data->parameters) : null,
         ];
+    }
+
+    protected function supportedDataClass(): string
+    {
+        return Tool::class;
+    }
+
+    protected function supportsModel(Model $model): bool
+    {
+        return $model instanceof Gemini;
     }
 
     /**

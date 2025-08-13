@@ -22,16 +22,6 @@ use Symfony\AI\Platform\Model;
  */
 final class ImageUrlNormalizer extends ModelContractNormalizer
 {
-    protected function supportedDataClass(): string
-    {
-        return ImageUrl::class;
-    }
-
-    protected function supportsModel(Model $model): bool
-    {
-        return $model instanceof Claude;
-    }
-
     /**
      * @param ImageUrl $data
      *
@@ -46,5 +36,15 @@ final class ImageUrlNormalizer extends ModelContractNormalizer
                 'url' => $data->url,
             ],
         ];
+    }
+
+    protected function supportedDataClass(): string
+    {
+        return ImageUrl::class;
+    }
+
+    protected function supportsModel(Model $model): bool
+    {
+        return $model instanceof Claude;
     }
 }

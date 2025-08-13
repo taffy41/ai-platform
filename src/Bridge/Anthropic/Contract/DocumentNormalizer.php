@@ -21,16 +21,6 @@ use Symfony\AI\Platform\Model;
  */
 class DocumentNormalizer extends ModelContractNormalizer
 {
-    protected function supportedDataClass(): string
-    {
-        return Document::class;
-    }
-
-    protected function supportsModel(Model $model): bool
-    {
-        return $model instanceof Claude;
-    }
-
     /**
      * @param Document $data
      *
@@ -46,5 +36,15 @@ class DocumentNormalizer extends ModelContractNormalizer
                 'data' => $data->asBase64(),
             ],
         ];
+    }
+
+    protected function supportedDataClass(): string
+    {
+        return Document::class;
+    }
+
+    protected function supportsModel(Model $model): bool
+    {
+        return $model instanceof Claude;
     }
 }

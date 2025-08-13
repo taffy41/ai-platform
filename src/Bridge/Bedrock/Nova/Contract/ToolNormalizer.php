@@ -24,16 +24,6 @@ use Symfony\AI\Platform\Tool\Tool;
  */
 class ToolNormalizer extends ModelContractNormalizer
 {
-    protected function supportedDataClass(): string
-    {
-        return Tool::class;
-    }
-
-    protected function supportsModel(Model $model): bool
-    {
-        return $model instanceof Nova;
-    }
-
     /**
      * @param Tool $data
      *
@@ -58,5 +48,15 @@ class ToolNormalizer extends ModelContractNormalizer
                 ],
             ],
         ];
+    }
+
+    protected function supportedDataClass(): string
+    {
+        return Tool::class;
+    }
+
+    protected function supportsModel(Model $model): bool
+    {
+        return $model instanceof Nova;
     }
 }
