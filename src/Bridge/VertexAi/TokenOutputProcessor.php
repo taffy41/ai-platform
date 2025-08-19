@@ -14,7 +14,7 @@ namespace Symfony\AI\Platform\Bridge\VertexAi;
 use Symfony\AI\Agent\Output;
 use Symfony\AI\Agent\OutputProcessorInterface;
 use Symfony\AI\Platform\Metadata\Metadata;
-use Symfony\AI\Platform\Result\Metadata\TokenUsage;
+use Symfony\AI\Platform\Metadata\TokenUsage;
 use Symfony\AI\Platform\Result\StreamResult;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface;
