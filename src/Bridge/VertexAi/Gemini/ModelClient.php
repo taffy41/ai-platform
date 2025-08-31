@@ -76,6 +76,17 @@ final readonly class ModelClient implements ModelClientInterface
             $options['tools'][] = ['functionDeclarations' => $tools];
         }
 
+        if (isset($options['server_tools'])) {
+            foreach ($options['server_tools'] as $tool => $params) {
+                if (!$params) {
+                    continue;
+                }
+
+                $options['tools'][] = [$tool => true === $params ? new \ArrayObject() : $params];
+            }
+            unset($options['server_tools']);
+        }
+
         if (\is_string($payload)) {
             $payload = [
                 'contents' => [
