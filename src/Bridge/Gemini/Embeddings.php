@@ -20,11 +20,8 @@ use Symfony\AI\Platform\Model;
  */
 class Embeddings extends Model
 {
-    /** Supported dimensions: 3072, 1536, or 768 */
     public const GEMINI_EMBEDDING_EXP_03_07 = 'gemini-embedding-exp-03-07';
-    /** Fixed 768 dimensions */
     public const TEXT_EMBEDDING_004 = 'text-embedding-004';
-    /** Fixed 768 dimensions */
     public const EMBEDDING_001 = 'embedding-001';
 
     /**
