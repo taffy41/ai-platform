@@ -34,7 +34,9 @@ final readonly class LlamaModelClient implements ModelClientInterface
 
     public function request(Model $model, array|string $payload, array $options = []): RawHttpResult
     {
-        $model instanceof Llama || throw new InvalidArgumentException(\sprintf('The model must be an instance of "%s".', Llama::class));
+        if (!$model instanceof Llama) {
+            throw new InvalidArgumentException(\sprintf('The model must be an instance of "%s".', Llama::class));
+        }
 
         return new RawHttpResult(
             $this->client->request(\sprintf('meta/meta-%s', $model->getName()), 'predictions', $payload)
