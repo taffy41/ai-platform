@@ -13,7 +13,7 @@ namespace Symfony\AI\Platform\Bridge\LmStudio\Completions;
 
 use Symfony\AI\Platform\Bridge\LmStudio\Completions;
 use Symfony\AI\Platform\Model;
-use Symfony\AI\Platform\ModelClientInterface as PlatformResponseFactory;
+use Symfony\AI\Platform\ModelClientInterface;
 use Symfony\AI\Platform\Result\RawHttpResult;
 use Symfony\Component\HttpClient\EventSourceHttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -21,7 +21,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 /**
  * @author André Lubian <lubiana123@gmail.com>
  */
-final readonly class ModelClient implements PlatformResponseFactory
+final readonly class ModelClient implements ModelClientInterface
 {
     private EventSourceHttpClient $httpClient;
 
