@@ -31,6 +31,10 @@ use Symfony\Contracts\HttpClient\ResponseInterface as HttpResponse;
  */
 final readonly class ResultConverter implements ResultConverterInterface
 {
+    public const OUTCOME_OK = 'OUTCOME_OK';
+    public const OUTCOME_FAILED = 'OUTCOME_FAILED';
+    public const OUTCOME_DEADLINE_EXCEEDED = 'OUTCOME_DEADLINE_EXCEEDED';
+
     public function supports(Model $model): bool
     {
         return $model instanceof Gemini;
@@ -110,24 +114,55 @@ final readonly class ResultConverter implements ResultConverterInterface
      *                 name: string,
      *                 args: mixed[]
      *             },
-     *             text?: string
+     *             text?: string,
+     *             executableCode?: array{
+     *                 language?: string,
+     *                 code?: string
+     *             },
+     *             codeExecutionResult?: array{
+     *                 outcome: self::OUTCOME_*,
+     *                 output: string
+     *             }
      *         }[]
      *     }
      * } $choice
      */
     private function convertChoice(array $choice): ToolCallResult|TextResult
     {
-        $contentPart = $choice['content']['parts'][0] ?? [];
+        $contentParts = $choice['content']['parts'];
 
-        if (isset($contentPart['functionCall'])) {
-            return new ToolCallResult($this->convertToolCall($contentPart['functionCall']));
+        if (1 === \count($contentParts)) {
+            $contentPart = $contentParts[0];
+
+            if (isset($contentPart['functionCall'])) {
+                return new ToolCallResult($this->convertToolCall($contentPart['functionCall']));
+            }
+
+            if (isset($contentPart['text'])) {
+                return new TextResult($contentPart['text']);
+            }
+
+            throw new RuntimeException(\sprintf('Unsupported finish reason "%s".', $choice['finishReason']));
         }
 
-        if (isset($contentPart['text'])) {
-            return new TextResult($contentPart['text']);
+        $content = '';
+        $successfulCodeExecutionDetected = false;
+        foreach ($contentParts as $contentPart) {
+            if ($this->isSuccessfulCodeExecution($contentPart)) {
+                $successfulCodeExecutionDetected = true;
+                continue;
+            }
+
+            if ($successfulCodeExecutionDetected) {
+                $content .= $contentPart['text'];
+            }
         }
 
-        throw new RuntimeException(\sprintf('Unsupported finish reason "%s".', $choice['finishReason']));
+        if ('' !== $content) {
+            return new TextResult($content);
+        }
+
+        throw new RuntimeException('Code execution failed.');
     }
 
     /**
@@ -140,5 +175,24 @@ final readonly class ResultConverter implements ResultConverterInterface
     private function convertToolCall(array $toolCall): ToolCall
     {
         return new ToolCall($toolCall['id'] ?? '', $toolCall['name'], $toolCall['args']);
+    }
+
+    /**
+     * @param array{
+     *     codeExecutionResult?: array{
+     *         outcome: self::OUTCOME_*,
+     *         output: string
+     *     }
+     * } $contentPart
+     */
+    private function isSuccessfulCodeExecution(array $contentPart): bool
+    {
+        if (!isset($contentPart['codeExecutionResult'])) {
+            return false;
+        }
+
+        $result = $contentPart['codeExecutionResult'];
+
+        return self::OUTCOME_OK === $result['outcome'];
     }
 }
