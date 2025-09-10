@@ -29,6 +29,8 @@ final class Mistral extends Model
     public const MINISTRAL_8B = 'mistral-8b-latest';
     public const PIXSTRAL_LARGE = 'pixstral-large-latest';
     public const PIXSTRAL = 'pixstral-12b-latest';
+    public const VOXTRAL_SMALL = 'voxtral-small-latest';
+    public const VOXTRAL_MINI = 'voxtral-mini-latest';
 
     /**
      * @param array<string, mixed> $options
@@ -48,6 +50,10 @@ final class Mistral extends Model
             $capabilities[] = Capability::INPUT_IMAGE;
         }
 
+        if (\in_array($name, [self::VOXTRAL_SMALL, self::VOXTRAL_MINI], true)) {
+            $capabilities[] = Capability::INPUT_AUDIO;
+        }
+
         if (\in_array($name, [
             self::CODESTRAL,
             self::MISTRAL_LARGE,
@@ -57,6 +63,8 @@ final class Mistral extends Model
             self::MINISTRAL_8B,
             self::PIXSTRAL,
             self::PIXSTRAL_LARGE,
+            self::VOXTRAL_MINI,
+            self::VOXTRAL_SMALL,
         ], true)) {
             $capabilities[] = Capability::TOOL_CALLING;
         }
