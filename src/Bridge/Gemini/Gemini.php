@@ -28,7 +28,7 @@ class Gemini extends Model
     /**
      * @param array<string, mixed> $options The default options for the model usage
      */
-    public function __construct(string $name = self::GEMINI_2_PRO, array $options = ['temperature' => 1.0])
+    public function __construct(string $name = self::GEMINI_2_PRO, array $options = [])
     {
         $capabilities = [
             Capability::INPUT_MESSAGES,
