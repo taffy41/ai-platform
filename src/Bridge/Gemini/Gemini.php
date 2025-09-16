@@ -19,6 +19,9 @@ use Symfony\AI\Platform\Model;
  */
 class Gemini extends Model
 {
+    public const GEMINI_25_FLASH = 'gemini-2.5-flash';
+    public const GEMINI_25_PRO = 'gemini-2.5-pro';
+    public const GEMINI_25_FLASH_LITE = 'gemini-2.5-flash-lite';
     public const GEMINI_2_FLASH = 'gemini-2.0-flash';
     public const GEMINI_2_PRO = 'gemini-2.0-pro-exp-02-05';
     public const GEMINI_2_FLASH_LITE = 'gemini-2.0-flash-lite-preview-02-05';
