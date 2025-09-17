@@ -14,6 +14,7 @@ namespace Symfony\AI\Platform\Bridge\DockerModelRunner\Completions;
 use Symfony\AI\Platform\Bridge\DockerModelRunner\Completions;
 use Symfony\AI\Platform\Exception\ContentFilterException;
 use Symfony\AI\Platform\Exception\ExceedContextSizeException;
+use Symfony\AI\Platform\Exception\ModelNotFoundException;
 use Symfony\AI\Platform\Exception\RuntimeException;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\ChoiceResult;
@@ -44,6 +45,11 @@ final class ResultConverter implements ResultConverterInterface
     {
         if ($options['stream'] ?? false) {
             return new StreamResult($this->convertStream($result->getObject()));
+        }
+
+        if (404 === $result->getObject()->getStatusCode()
+            && str_contains(strtolower($result->getObject()->getContent(false)), 'model not found')) {
+            throw new ModelNotFoundException($result->getObject()->getContent(false));
         }
 
         $data = $result->getData();
