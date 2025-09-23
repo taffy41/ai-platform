@@ -36,7 +36,7 @@ class Claude extends Model
      */
     public function __construct(
         string $name,
-        array $options = ['max_tokens' => 1000],
+        array $options = [],
     ) {
         $capabilities = [
             Capability::INPUT_MESSAGES,
