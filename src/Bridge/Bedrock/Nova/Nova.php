@@ -28,7 +28,7 @@ final class Nova extends Model
      * @param array<string, mixed> $options The default options for the model usage
      */
     public function __construct(
-        string $name = self::PRO,
+        string $name,
         array $options = ['max_tokens' => 1000],
     ) {
         $capabilities = [

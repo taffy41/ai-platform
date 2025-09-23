@@ -25,7 +25,7 @@ final class Embeddings extends Model
      * @param array<string, mixed> $options
      */
     public function __construct(
-        string $name = self::MISTRAL_EMBED,
+        string $name,
         array $options = [],
     ) {
         parent::__construct($name, [Capability::INPUT_MULTIPLE], $options);

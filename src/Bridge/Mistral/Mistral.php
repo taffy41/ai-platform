@@ -36,7 +36,7 @@ final class Mistral extends Model
      * @param array<string, mixed> $options
      */
     public function __construct(
-        string $name = self::MISTRAL_LARGE,
+        string $name,
         array $options = [],
     ) {
         $capabilities = [
