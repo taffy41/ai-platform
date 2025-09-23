@@ -35,10 +35,8 @@ final class Mistral extends Model
     /**
      * @param array<string, mixed> $options
      */
-    public function __construct(
-        string $name,
-        array $options = [],
-    ) {
+    public function __construct(string $name, array $options = [])
+    {
         $capabilities = [
             Capability::INPUT_MESSAGES,
             Capability::OUTPUT_TEXT,
