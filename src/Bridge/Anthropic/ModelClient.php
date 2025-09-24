@@ -47,7 +47,7 @@ final readonly class ModelClient implements ModelClientInterface
             $options['tool_choice'] = ['type' => 'auto'];
         }
 
-        if (isset($options['beta_features']) && \is_array($options['beta_features']) && !empty($options['beta_features'])) {
+        if (isset($options['beta_features']) && \is_array($options['beta_features']) && \count($options['beta_features']) > 0) {
             $headers['anthropic-beta'] = implode(',', $options['beta_features']);
             unset($options['beta_features']);
         }
