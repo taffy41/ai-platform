@@ -34,7 +34,7 @@ class Claude extends Model
     /**
      * @param array<string, mixed> $options The default options for the model usage
      */
-    public function __construct(string $name, array $options = ['max_tokens' => 1000])
+    public function __construct(string $name, array $options = [])
     {
         $capabilities = [
             Capability::INPUT_MESSAGES,
@@ -43,6 +43,10 @@ class Claude extends Model
             Capability::OUTPUT_STREAMING,
             Capability::TOOL_CALLING,
         ];
+
+        if (!isset($options['max_tokens'])) {
+            $options['max_tokens'] = 1000;
+        }
 
         parent::__construct($name, $capabilities, $options);
     }
