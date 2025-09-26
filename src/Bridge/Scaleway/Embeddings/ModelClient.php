@@ -14,14 +14,14 @@ namespace Symfony\AI\Platform\Bridge\Scaleway\Embeddings;
 use Symfony\AI\Platform\Bridge\Scaleway\Embeddings;
 use Symfony\AI\Platform\Exception\InvalidArgumentException;
 use Symfony\AI\Platform\Model;
-use Symfony\AI\Platform\ModelClientInterface as PlatformResponseFactory;
+use Symfony\AI\Platform\ModelClientInterface;
 use Symfony\AI\Platform\Result\RawHttpResult;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * @author Marcus Stöhr <marcus@fischteich.net>
  */
-final readonly class ModelClient implements PlatformResponseFactory
+final readonly class ModelClient implements ModelClientInterface
 {
     public function __construct(
         private HttpClientInterface $httpClient,

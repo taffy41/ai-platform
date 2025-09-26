@@ -23,7 +23,7 @@ use Symfony\AI\Platform\Result\StreamResult;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\AI\Platform\Result\ToolCallResult;
-use Symfony\AI\Platform\ResultConverterInterface as PlatformResultConverter;
+use Symfony\AI\Platform\ResultConverterInterface;
 use Symfony\Component\HttpClient\Chunk\ServerSentEvent;
 use Symfony\Component\HttpClient\EventSourceHttpClient;
 use Symfony\Component\HttpClient\Exception\JsonException;
@@ -32,7 +32,7 @@ use Symfony\Contracts\HttpClient\ResponseInterface as HttpResponse;
 /**
  * @author Marcus Stöhr <marcus@fischteich.net>
  */
-final class ResultConverter implements PlatformResultConverter
+final class ResultConverter implements ResultConverterInterface
 {
     public function supports(Model $model): bool
     {
