@@ -61,7 +61,9 @@ final class ToolCall implements \JsonSerializable
             'type' => 'function',
             'function' => [
                 'name' => $this->name,
-                'arguments' => json_encode($this->arguments),
+                'arguments' => empty($this->arguments)
+                    ? ' '
+                    : json_encode($this->arguments),
             ],
         ];
     }
