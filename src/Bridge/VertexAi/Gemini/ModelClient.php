@@ -45,7 +45,8 @@ final class ModelClient implements ModelClientInterface
      */
     public function request(BaseModel $model, array|string $payload, array $options = []): RawHttpResult
     {
-        $method = $options['stream'] ?? false ? 'streamGenerateContent' : 'generateContent';
+        $isStream = $options['stream'] ?? false;
+        $method = $isStream ? 'streamGenerateContent' : 'generateContent';
 
         if (null !== $this->location && null !== $this->projectId) {
             $url = \sprintf(
@@ -66,6 +67,9 @@ final class ModelClient implements ModelClientInterface
         $query = [];
         if (null !== $this->apiKey) {
             $query['key'] = $this->apiKey;
+        }
+        if ($isStream) {
+            $query['alt'] = 'sse';
         }
 
         if (isset($options[PlatformSubscriber::RESPONSE_FORMAT]['json_schema']['schema'])) {
