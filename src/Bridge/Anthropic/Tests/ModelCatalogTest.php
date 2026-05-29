@@ -37,6 +37,7 @@ final class ModelCatalogTest extends ModelCatalogTestCase
         yield 'claude-opus-4-6' => ['claude-opus-4-6', Claude::class, [Capability::INPUT_MESSAGES, Capability::INPUT_IMAGE, Capability::OUTPUT_TEXT, Capability::OUTPUT_STREAMING, Capability::OUTPUT_STRUCTURED, Capability::THINKING, Capability::TOOL_CALLING]];
         yield 'claude-sonnet-4-6' => ['claude-sonnet-4-6', Claude::class, [Capability::INPUT_MESSAGES, Capability::INPUT_IMAGE, Capability::OUTPUT_TEXT, Capability::OUTPUT_STREAMING, Capability::OUTPUT_STRUCTURED, Capability::THINKING, Capability::TOOL_CALLING]];
         yield 'claude-opus-4-7' => ['claude-opus-4-7', Claude::class, [Capability::INPUT_MESSAGES, Capability::INPUT_IMAGE, Capability::OUTPUT_TEXT, Capability::OUTPUT_STREAMING, Capability::OUTPUT_STRUCTURED, Capability::THINKING, Capability::TOOL_CALLING]];
+        yield 'claude-opus-4-8' => ['claude-opus-4-8', Claude::class, [Capability::INPUT_MESSAGES, Capability::INPUT_IMAGE, Capability::OUTPUT_TEXT, Capability::OUTPUT_STREAMING, Capability::OUTPUT_STRUCTURED, Capability::THINKING, Capability::TOOL_CALLING]];
     }
 
     protected function createModelCatalog(): ModelCatalogInterface
