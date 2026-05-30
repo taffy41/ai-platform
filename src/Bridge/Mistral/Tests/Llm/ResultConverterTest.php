@@ -14,12 +14,9 @@ namespace Symfony\AI\Platform\Bridge\Mistral\Tests\Llm;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Bridge\Mistral\Llm\ResultConverter;
 use Symfony\AI\Platform\Bridge\Mistral\Mistral;
-use Symfony\AI\Platform\Exception\BadRequestException;
 use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\ServerException;
-use Symfony\AI\Platform\FinishReason\FinishReasonCase;
 use Symfony\AI\Platform\Result\RawHttpResult;
-use Symfony\AI\Platform\Result\TextResult;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\JsonMockResponse;
 
@@ -32,55 +29,10 @@ final class ResultConverterTest extends TestCase
         $this->assertTrue($converter->supports(new Mistral('mistral-large-latest')));
     }
 
-    public function testConvertTextResult()
-    {
-        $httpClient = new MockHttpClient(new JsonMockResponse([
-            'choices' => [
-                [
-                    'index' => 0,
-                    'message' => [
-                        'role' => 'assistant',
-                        'content' => 'Hello world',
-                    ],
-                    'finish_reason' => 'stop',
-                ],
-            ],
-        ]));
-
-        $httpResponse = $httpClient->request('POST', 'https://api.mistral.ai/v1/chat/completions');
-        $converter = new ResultConverter();
-
-        $result = $converter->convert(new RawHttpResult($httpResponse));
-
-        $this->assertInstanceOf(TextResult::class, $result);
-        $this->assertSame('Hello world', $result->getContent());
-    }
-
-    public function testConvertTruncatedTextResult()
-    {
-        $httpClient = new MockHttpClient(new JsonMockResponse([
-            'choices' => [
-                [
-                    'index' => 0,
-                    'message' => [
-                        'role' => 'assistant',
-                        'content' => 'Truncated answ',
-                    ],
-                    'finish_reason' => 'length',
-                ],
-            ],
-        ]));
-
-        $httpResponse = $httpClient->request('POST', 'https://api.mistral.ai/v1/chat/completions');
-        $converter = new ResultConverter();
-
-        $result = $converter->convert(new RawHttpResult($httpResponse));
-
-        $this->assertInstanceOf(TextResult::class, $result);
-        $this->assertSame('Truncated answ', $result->getContent());
-        $this->assertTrue($result->getMetadata()->get('finish_reason')->is(FinishReasonCase::LENGTH));
-    }
-
+    /**
+     * Not a cassette: provoking this for real means overflowing the smallest available Mistral
+     * context window, so the recorded request body would be a ~640 KB prompt of filler text.
+     */
     public function testConvertThrowsExceedContextSizeExceptionOnContextOverflow()
     {
         $this->expectException(ExceedContextSizeException::class);
@@ -96,21 +48,10 @@ final class ResultConverterTest extends TestCase
         $converter->convert(new RawHttpResult($httpResponse));
     }
 
-    public function testConvertThrowsBadRequestExceptionOnOtherBadRequestErrors()
-    {
-        $this->expectException(BadRequestException::class);
-        $this->expectExceptionMessage('Invalid model specified');
-
-        $httpClient = new MockHttpClient(new JsonMockResponse([
-            'message' => 'Invalid model specified',
-        ], ['http_code' => 400]));
-
-        $httpResponse = $httpClient->request('POST', 'https://api.mistral.ai/v1/chat/completions');
-        $converter = new ResultConverter();
-
-        $converter->convert(new RawHttpResult($httpResponse));
-    }
-
+    /**
+     * Not a cassette: a provider cannot be asked for a 500 on demand. The assertion is on our own
+     * status handling anyway - the body is irrelevant - so a mock is the honest tool here.
+     */
     public function testThrowsServerExceptionOnServerErrorStatusBeforeStreaming()
     {
         $httpClient = new MockHttpClient(new JsonMockResponse(['error' => 'Service Unavailable'], ['http_code' => 500]));

@@ -1,0 +1,51 @@
+{
+    "interactions": [
+        {
+            "request": {
+                "method": "POST",
+                "url": "https://api.mistral.ai/v1/chat/completions",
+                "signature": "3644a5561fd39da85ffa0127dc4eda52",
+                "headers": {
+                    "content-type": [
+                        "application/json"
+                    ],
+                    "accept": [
+                        "application/json"
+                    ],
+                    "authorization": [
+                        "[redacted]"
+                    ]
+                },
+                "body": "{\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}],\"model\":\"mistral-does-not-exist\"}"
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "content-type": [
+                        "application/json"
+                    ],
+                    "content-length": [
+                        "140"
+                    ],
+                    "server": [
+                        "cloudflare"
+                    ],
+                    "access-control-allow-origin": [
+                        "*"
+                    ],
+                    "set-cookie": [
+                        "[redacted]"
+                    ],
+                    "strict-transport-security": [
+                        "max-age=15552000; includeSubDomains; preload"
+                    ],
+                    "x-content-type-options": [
+                        "nosniff"
+                    ]
+                },
+                "body_format": "json",
+                "body": "{\"object\":\"error\",\"message\":\"Invalid model: mistral-does-not-exist\",\"type\":\"invalid_model\",\"param\":null,\"code\":\"1500\",\"raw_status_code\":400}"
+            }
+        }
+    ]
+}
