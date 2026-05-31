@@ -72,6 +72,46 @@ final class ModelClientTest extends TestCase
         $modelClient->request(new CompletionsModel('gpt-4o'), ['model' => 'gpt-4o', 'messages' => [['role' => 'user', 'content' => 'Hello']]], ['temperature' => 0.7]);
     }
 
+    public function testItRequestsUsageForStreamedResponses()
+    {
+        $resultCallback = function (string $method, string $url, array $options): HttpResponse {
+            $this->assertSame('POST', $method);
+            $this->assertSame('http://localhost:8000/v1/chat/completions', $url);
+            $this->assertSame('Authorization: Bearer sk-valid-api-key', $options['normalized_headers']['authorization'][0]);
+
+            $this->assertSame('{"stream":true,"stream_options":{"include_usage":true},"model":"gpt-4o","messages":[{"role":"user","content":"Hello"}]}', $options['body']);
+
+            return new MockResponse();
+        };
+        $httpClient = new MockHttpClient([$resultCallback]);
+        $modelClient = new ModelClient($httpClient, 'http://localhost:8000', 'sk-valid-api-key');
+        $modelClient->request(
+            new CompletionsModel('gpt-4o'),
+            ['model' => 'gpt-4o', 'messages' => [['role' => 'user', 'content' => 'Hello']]],
+            ['stream' => true],
+        );
+    }
+
+    public function testItPreservesExplicitStreamOptionsForStreamedResponses()
+    {
+        $resultCallback = function (string $method, string $url, array $options): HttpResponse {
+            $this->assertSame('POST', $method);
+            $this->assertSame('http://localhost:8000/v1/chat/completions', $url);
+            $this->assertSame('Authorization: Bearer sk-valid-api-key', $options['normalized_headers']['authorization'][0]);
+
+            $this->assertSame('{"stream":true,"stream_options":{"foo":"bar"},"model":"gpt-4o","messages":[{"role":"user","content":"Hello"}]}', $options['body']);
+
+            return new MockResponse();
+        };
+        $httpClient = new MockHttpClient([$resultCallback]);
+        $modelClient = new ModelClient($httpClient, 'http://localhost:8000', 'sk-valid-api-key');
+        $modelClient->request(
+            new CompletionsModel('gpt-4o'),
+            ['model' => 'gpt-4o', 'messages' => [['role' => 'user', 'content' => 'Hello']]],
+            ['stream' => true, 'stream_options' => ['foo' => 'bar']],
+        );
+    }
+
     #[TestWith(['https://api.inference.eu', 'https://api.inference.eu/v1/chat/completions'])]
     #[TestWith(['https://api.inference.com', 'https://api.inference.com/v1/chat/completions'])]
     public function testItUsesCorrectBaseUrl(string $baseUrl, string $expectedUrl)

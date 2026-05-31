@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.10
+---
+
+ * Request usage stats for streamed responses by default when no `stream_options` provided
+
 0.8
 ---
 
