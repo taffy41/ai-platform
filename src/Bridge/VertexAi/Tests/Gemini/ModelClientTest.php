@@ -49,6 +49,19 @@ final class ModelClientTest extends TestCase
         $this->assertSame($expectedResponse, $data);
     }
 
+    public function testRequestWithStreamAsksForSseFormat()
+    {
+        $httpClient = new MockHttpClient(function (string $method, string $url) {
+            $this->assertStringContainsString(':streamGenerateContent', $url);
+            $this->assertStringContainsString('alt=sse', $url);
+
+            return new JsonMockResponse(['candidates' => []]);
+        });
+
+        $client = new ModelClient($httpClient, 'global', 'test');
+        $client->request(new Model('gemini-2.0-flash'), ['contents' => []], ['stream' => true]);
+    }
+
     public function testItPassesServerToolsFromOptions()
     {
         $payload = [
