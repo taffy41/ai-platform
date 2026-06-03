@@ -177,6 +177,39 @@ class ModelClientTest extends TestCase
         $this->modelClient->request($this->model, ['message' => 'test'], $options);
     }
 
+    public function testToolChoiceDefaultsToAutoWhenToolsArePresent()
+    {
+        $this->httpClient = new MockHttpClient(function ($method, $url, $options) {
+            $body = json_decode($options['body'], true);
+            $this->assertSame(['type' => 'auto'], $body['tool_choice']);
+
+            return new JsonMockResponse('{"success": true}');
+        });
+
+        $this->modelClient = new ModelClient($this->httpClient, 'test-api-key');
+
+        $options = ['tools' => [['name' => 'noop', 'description' => '', 'input_schema' => []]]];
+        $this->modelClient->request($this->model, ['message' => 'test'], $options);
+    }
+
+    public function testToolChoiceFromCallerIsPreserved()
+    {
+        $this->httpClient = new MockHttpClient(function ($method, $url, $options) {
+            $body = json_decode($options['body'], true);
+            $this->assertSame(['type' => 'tool', 'name' => 'noop'], $body['tool_choice']);
+
+            return new JsonMockResponse('{"success": true}');
+        });
+
+        $this->modelClient = new ModelClient($this->httpClient, 'test-api-key');
+
+        $options = [
+            'tools' => [['name' => 'noop', 'description' => '', 'input_schema' => []]],
+            'tool_choice' => ['type' => 'tool', 'name' => 'noop'],
+        ];
+        $this->modelClient->request($this->model, ['message' => 'test'], $options);
+    }
+
     public function testStringPayloadThrowsException()
     {
         $this->modelClient = new ModelClient(new MockHttpClient(), 'test-api-key');

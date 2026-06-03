@@ -62,7 +62,7 @@ final class ModelClient implements ModelClientInterface
         $payload = $this->injectCacheControl($payload);
 
         if (isset($options['tools'])) {
-            $options['tool_choice'] = ['type' => 'auto'];
+            $options['tool_choice'] ??= ['type' => 'auto'];
             $options['tools'] = $this->injectToolsCacheControl($options['tools']);
         }
 
