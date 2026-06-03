@@ -44,6 +44,7 @@ final class ModelCatalogTest extends ModelCatalogTestCase
                 Capability::INPUT_PDF,
                 Capability::OUTPUT_TEXT,
                 Capability::OUTPUT_STRUCTURED,
+                Capability::TOOL_CALLING,
             ],
         ];
 
@@ -56,9 +57,10 @@ final class ModelCatalogTest extends ModelCatalogTestCase
                 Capability::INPUT_IMAGE,
                 Capability::INPUT_PDF,
                 Capability::INPUT_AUDIO,
-                Capability::INPUT_MULTIMODAL,
+                Capability::INPUT_VIDEO,
                 Capability::OUTPUT_TEXT,
                 Capability::OUTPUT_STRUCTURED,
+                Capability::TOOL_CALLING,
             ],
         ];
 
@@ -72,6 +74,7 @@ final class ModelCatalogTest extends ModelCatalogTestCase
                 Capability::INPUT_PDF,
                 Capability::OUTPUT_TEXT,
                 Capability::OUTPUT_STRUCTURED,
+                Capability::TOOL_CALLING,
             ],
         ];
 
@@ -79,10 +82,12 @@ final class ModelCatalogTest extends ModelCatalogTestCase
             'mistralai/mistral-large-2411',
             CompletionsModel::class,
             [
-                Capability::OUTPUT_STREAMING,
+                Capability::INPUT_PDF,
                 Capability::INPUT_TEXT,
-                Capability::OUTPUT_TEXT,
+                Capability::OUTPUT_STREAMING,
                 Capability::OUTPUT_STRUCTURED,
+                Capability::OUTPUT_TEXT,
+                Capability::TOOL_CALLING,
             ],
         ];
 
@@ -96,6 +101,7 @@ final class ModelCatalogTest extends ModelCatalogTestCase
                 Capability::INPUT_PDF,
                 Capability::OUTPUT_TEXT,
                 Capability::OUTPUT_STRUCTURED,
+                Capability::TOOL_CALLING,
             ],
         ];
 
@@ -109,6 +115,7 @@ final class ModelCatalogTest extends ModelCatalogTestCase
                 Capability::INPUT_PDF,
                 Capability::OUTPUT_TEXT,
                 Capability::OUTPUT_STRUCTURED,
+                Capability::TOOL_CALLING,
             ],
         ];
 
@@ -179,7 +186,7 @@ final class ModelCatalogTest extends ModelCatalogTestCase
         $this->assertInstanceOf(Model::class, $model);
         $this->assertInstanceOf(CompletionsModel::class, $model);
         $this->assertSame('deepseek/deepseek-v3.1-terminus:exacto', $model->getName());
-        $this->assertSame([Capability::INPUT_TEXT, Capability::OUTPUT_TEXT, Capability::OUTPUT_STREAMING, Capability::OUTPUT_STRUCTURED], $model->getCapabilities());
+        $this->assertSame([Capability::INPUT_TEXT, Capability::OUTPUT_TEXT, Capability::OUTPUT_STREAMING, Capability::OUTPUT_STRUCTURED, Capability::TOOL_CALLING], $model->getCapabilities());
     }
 
     /**
