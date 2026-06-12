@@ -5,6 +5,7 @@ CHANGELOG
 ----
 
  * Raise a `RuntimeException` on unhandled HTTP error statuses before streaming, instead of returning an empty stream
+ * Add OCR support by `mistral-ocr-latest` model and `/v1/ocr` endpoint, returning a typed `OcrResult` with pages, layout images and annotations
 
 0.10
 ----

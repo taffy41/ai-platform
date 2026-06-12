@@ -8,6 +8,8 @@ Mistral Documentation
 
  * [API reference](https://docs.mistral.ai/api/)
  * [Chat completions](https://docs.mistral.ai/api/endpoint/chat)
+ * [OCR](https://docs.mistral.ai/api/endpoint/ocr)
+
 
 Test Fixtures
 -------------
