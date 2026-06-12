@@ -11,11 +11,13 @@
 
 namespace Symfony\AI\Platform\Bridge\Generic\Tests\Completions;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Bridge\Generic\Completions\ResultConverter;
 use Symfony\AI\Platform\Exception\AuthenticationException;
 use Symfony\AI\Platform\Exception\BadRequestException;
 use Symfony\AI\Platform\Exception\ContentFilterException;
+use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\RuntimeException;
 use Symfony\AI\Platform\Result\ChoiceResult;
 use Symfony\AI\Platform\Result\InMemoryRawResult;
@@ -275,6 +277,33 @@ class ResultConverterTest extends TestCase
         $this->expectExceptionMessage('Unsupported finish reason "unsupported_reason"');
 
         $converter->convert(new RawHttpResult($httpResponse));
+    }
+
+    /**
+     * @param array{message: string, code?: string|int} $error
+     */
+    #[DataProvider('provideContextOverflowErrors')]
+    public function testThrowsExceedContextSizeExceptionOnContextOverflow(array $error)
+    {
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(400);
+        $httpResponse->method('getContent')->willReturn(json_encode(['error' => $error]));
+
+        $this->expectException(ExceedContextSizeException::class);
+        $this->expectExceptionMessage($error['message']);
+
+        $converter->convert(new RawHttpResult($httpResponse));
+    }
+
+    /**
+     * @return iterable<string, array{array{message: string, code?: string|int}}>
+     */
+    public static function provideContextOverflowErrors(): iterable
+    {
+        yield 'error code' => [['message' => "This model's maximum context length is 128000 tokens.", 'code' => 'context_length_exceeded']];
+        yield 'snake_case code in message' => [['message' => 'Error: context_length_exceeded', 'code' => 400]];
+        yield 'spaced code variant in message' => [['message' => 'Context length exceeded for this request.']];
     }
 
     public function testThrowsBadRequestExceptionOnBadRequestResponse()

@@ -13,6 +13,8 @@ namespace Symfony\AI\Platform\Bridge\Anthropic\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Bridge\Anthropic\ResultConverter;
+use Symfony\AI\Platform\Exception\BadRequestException;
+use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\RuntimeException;
 use Symfony\AI\Platform\Result\CodeExecutionResult;
 use Symfony\AI\Platform\Result\ExecutableCodeResult;
@@ -126,6 +128,36 @@ final class ResultConverterTest extends TestCase
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('API Error [Unknown]: "An unknown error occurred."');
+
+        $converter->convert(new RawHttpResult($response));
+    }
+
+    public function testThrowsExceedContextSizeExceptionWhenPromptIsTooLong()
+    {
+        $httpClient = new MockHttpClient([
+            new MockResponse('{"type":"error","error":{"type":"invalid_request_error","message":"prompt is too long: 213021 tokens > 204698 maximum"}}', ['http_code' => 400]),
+        ]);
+
+        $response = $httpClient->request('POST', 'https://api.anthropic.com/v1/messages');
+        $converter = new ResultConverter();
+
+        $this->expectException(ExceedContextSizeException::class);
+        $this->expectExceptionMessage('prompt is too long: 213021 tokens > 204698 maximum');
+
+        $converter->convert(new RawHttpResult($response));
+    }
+
+    public function testThrowsBadRequestExceptionOnOtherBadRequestErrors()
+    {
+        $httpClient = new MockHttpClient([
+            new MockResponse('{"type":"error","error":{"type":"invalid_request_error","message":"max_tokens is required"}}', ['http_code' => 400]),
+        ]);
+
+        $response = $httpClient->request('POST', 'https://api.anthropic.com/v1/messages');
+        $converter = new ResultConverter();
+
+        $this->expectException(BadRequestException::class);
+        $this->expectExceptionMessage('max_tokens is required');
 
         $converter->convert(new RawHttpResult($response));
     }

@@ -4,6 +4,7 @@ CHANGELOG
 0.10
 ----
 
+ * Throw `ExceedContextSizeException` instead of `BadRequestException` when a 400 response reports a context overflow
  * Allow overriding `tool_choice` via caller options instead of always forcing `['type' => 'auto']`
 
 0.9

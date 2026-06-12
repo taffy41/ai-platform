@@ -16,6 +16,7 @@ use Symfony\AI\Platform\Bridge\OpenResponses\ResultConverter;
 use Symfony\AI\Platform\Exception\AuthenticationException;
 use Symfony\AI\Platform\Exception\BadRequestException;
 use Symfony\AI\Platform\Exception\ContentFilterException;
+use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\RateLimitExceededException;
 use Symfony\AI\Platform\Exception\RuntimeException;
 use Symfony\AI\Platform\Result\InMemoryRawResult;
@@ -279,6 +280,43 @@ final class ResultConverterTest extends TestCase
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Response does not contain output');
+
+        $converter->convert(new RawHttpResult($httpResponse));
+    }
+
+    public function testThrowsExceedContextSizeExceptionWhenInputExceedsContextWindow()
+    {
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(400);
+        $httpResponse->method('getContent')->willReturn(json_encode([
+            'error' => [
+                'message' => 'Your input exceeds the context window of this model. Please decrease the length of your messages.',
+                'type' => 'invalid_request_error',
+            ],
+        ]));
+
+        $this->expectException(ExceedContextSizeException::class);
+        $this->expectExceptionMessage('Your input exceeds the context window of this model.');
+
+        $converter->convert(new RawHttpResult($httpResponse));
+    }
+
+    public function testThrowsExceedContextSizeExceptionOnContextLengthExceededCode()
+    {
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(400);
+        $httpResponse->method('getContent')->willReturn(json_encode([
+            'error' => [
+                'message' => 'Context length exceeded for this request.',
+                'type' => 'invalid_request_error',
+                'code' => 'context_length_exceeded',
+            ],
+        ]));
+
+        $this->expectException(ExceedContextSizeException::class);
+        $this->expectExceptionMessage('Context length exceeded for this request.');
 
         $converter->convert(new RawHttpResult($httpResponse));
     }

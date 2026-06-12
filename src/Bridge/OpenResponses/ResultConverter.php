@@ -14,6 +14,7 @@ namespace Symfony\AI\Platform\Bridge\OpenResponses;
 use Symfony\AI\Platform\Exception\AuthenticationException;
 use Symfony\AI\Platform\Exception\BadRequestException;
 use Symfony\AI\Platform\Exception\ContentFilterException;
+use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\RateLimitExceededException;
 use Symfony\AI\Platform\Exception\RuntimeException;
 use Symfony\AI\Platform\Model;
@@ -61,7 +62,13 @@ final class ResultConverter implements ResultConverterInterface
         }
 
         if (400 === $response->getStatusCode()) {
-            $errorMessage = json_decode($response->getContent(false), true)['error']['message'] ?? 'Bad Request';
+            $error = json_decode($response->getContent(false), true)['error'] ?? [];
+            $errorMessage = $error['message'] ?? 'Bad Request';
+
+            if ('context_length_exceeded' === ($error['code'] ?? null) || str_contains($errorMessage, 'exceeds the context window')) {
+                throw new ExceedContextSizeException($errorMessage);
+            }
+
             throw new BadRequestException($errorMessage);
         }
 

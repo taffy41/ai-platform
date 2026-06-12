@@ -13,6 +13,7 @@ namespace Symfony\AI\Platform\Bridge\Anthropic;
 
 use Symfony\AI\Platform\Exception\AuthenticationException;
 use Symfony\AI\Platform\Exception\BadRequestException;
+use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\RateLimitExceededException;
 use Symfony\AI\Platform\Exception\RuntimeException;
 use Symfony\AI\Platform\Model;
@@ -58,6 +59,11 @@ class ResultConverter implements ResultConverterInterface
 
         if (400 === $response->getStatusCode()) {
             $errorMessage = json_decode($response->getContent(false), true)['error']['message'] ?? 'Bad Request';
+
+            if (str_contains($errorMessage, 'prompt is too long')) {
+                throw new ExceedContextSizeException($errorMessage);
+            }
+
             throw new BadRequestException($errorMessage);
         }
 
