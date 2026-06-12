@@ -71,6 +71,23 @@ final class ModelClientTest extends TestCase
         );
     }
 
+    public function testMalformedUtf8InPayloadDoesNotAbortTheRequest()
+    {
+        $resultCallback = static function (string $method, string $url, array $options): HttpResponse {
+            self::assertSame('Content-Type: application/json', $options['normalized_headers']['content-type'][0]);
+            self::assertJson($options['body']);
+            self::assertStringContainsString('tool output \ufffd here', $options['body']);
+
+            return new MockResponse();
+        };
+        $httpClient = new MockHttpClient([$resultCallback]);
+        $modelClient = new ModelClient($httpClient, 'https://api.example.com', 'test-api-key');
+        $modelClient->request(
+            new ResponsesModel('test-model'),
+            ['input' => [['role' => 'user', 'content' => "tool output \xB1 here"]]],
+        );
+    }
+
     public function testItWorksWithoutApiKey()
     {
         $resultCallback = static function (string $method, string $url, array $options): HttpResponse {
