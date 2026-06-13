@@ -122,6 +122,22 @@ final class ModelClientTest extends TestCase
         );
     }
 
+    public function testItParsesHeaderlessSseStreams()
+    {
+        $response = new MockResponse(
+            "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"Hello\"}\n\n",
+            ['response_headers' => ['content-type' => 'application/json']],
+        );
+        $modelClient = new ModelClient(new MockHttpClient([$response]), 'https://api.example.com', 'test-api-key');
+
+        $result = $modelClient->request(new ResponsesModel('test-model'), ['input' => []], ['stream' => true]);
+
+        $this->assertSame(
+            [['type' => 'response.output_text.delta', 'delta' => 'Hello']],
+            iterator_to_array($result->getDataStream(), false),
+        );
+    }
+
     public function testItHandlesStructuredOutputOption()
     {
         $resultCallback = static function (string $method, string $url, array $options): HttpResponse {
