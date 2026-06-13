@@ -323,6 +323,24 @@ final class ResultConverterTest extends TestCase
         $converter->convert(new RawHttpResult($httpResponse));
     }
 
+    public function testThrowsExceedContextSizeExceptionOnVllmMaxModelLen()
+    {
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(400);
+        $httpResponse->method('getContent')->willReturn(json_encode([
+            'error' => [
+                'message' => 'The engine prompt length 300072 exceeds the max_model_len 131072. Please reduce prompt.',
+                'type' => 'invalid_request_error',
+            ],
+        ]));
+
+        $this->expectException(ExceedContextSizeException::class);
+        $this->expectExceptionMessage('exceeds the max_model_len');
+
+        $converter->convert(new RawHttpResult($httpResponse));
+    }
+
     public function testThrowsBadRequestExceptionOnBadRequestResponse()
     {
         $converter = new ResultConverter();

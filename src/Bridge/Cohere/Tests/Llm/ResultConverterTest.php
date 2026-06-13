@@ -14,6 +14,7 @@ namespace Symfony\AI\Platform\Bridge\Cohere\Tests\Llm;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Bridge\Cohere\Cohere;
 use Symfony\AI\Platform\Bridge\Cohere\Llm\ResultConverter;
+use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\RuntimeException;
 use Symfony\AI\Platform\Result\InMemoryRawResult;
 use Symfony\AI\Platform\Result\RawHttpResult;
@@ -43,6 +44,22 @@ final class ResultConverterTest extends TestCase
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Unexpected response code 500');
+
+        $converter->convert(new RawHttpResult($response));
+    }
+
+    public function testItThrowsExceedContextSizeExceptionOnContextOverflow()
+    {
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn(400);
+        $response->method('getContent')->willReturn(json_encode([
+            'message' => 'too many tokens: size limit exceeded by 213302 tokens. Try using shorter or fewer inputs. The limit for this model is 288000 tokens.',
+        ]));
+
+        $converter = new ResultConverter();
+
+        $this->expectException(ExceedContextSizeException::class);
+        $this->expectExceptionMessage('too many tokens');
 
         $converter->convert(new RawHttpResult($response));
     }

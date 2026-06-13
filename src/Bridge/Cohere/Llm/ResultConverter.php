@@ -12,6 +12,7 @@
 namespace Symfony\AI\Platform\Bridge\Cohere\Llm;
 
 use Symfony\AI\Platform\Bridge\Cohere\Cohere;
+use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\RuntimeException;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\HttpStatusErrorHandlingTrait;
@@ -44,6 +45,15 @@ final class ResultConverter implements ResultConverterInterface
     public function convert(RawResultInterface|RawHttpResult $result, array $options = []): ResultInterface
     {
         $httpResponse = $result->getObject();
+
+        if (400 === $httpResponse->getStatusCode()) {
+            $body = json_decode($httpResponse->getContent(false), true) ?? [];
+            $message = $body['error']['message'] ?? $body['message'] ?? '';
+
+            if (str_contains(strtolower($message), 'too many tokens')) {
+                throw new ExceedContextSizeException('' !== $message ? $message : 'Context size exceeded');
+            }
+        }
 
         $this->throwOnHttpError($httpResponse);
 

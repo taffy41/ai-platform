@@ -67,7 +67,10 @@ final class ResultConverter implements ResultConverterInterface
             $error = json_decode($response->getContent(false), true)['error'] ?? [];
             $errorMessage = $error['message'] ?? 'Bad Request';
 
-            if ('context_length_exceeded' === ($error['code'] ?? null) || str_contains($errorMessage, 'exceeds the context window')) {
+            if ('context_length_exceeded' === ($error['code'] ?? null)
+                || str_contains($errorMessage, 'exceeds the context window')
+                || str_contains($errorMessage, 'max_model_len')
+            ) {
                 throw new ExceedContextSizeException($errorMessage);
             }
 
