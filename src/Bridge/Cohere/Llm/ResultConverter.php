@@ -13,6 +13,7 @@ namespace Symfony\AI\Platform\Bridge\Cohere\Llm;
 
 use Symfony\AI\Platform\Bridge\Cohere\Cohere;
 use Symfony\AI\Platform\Exception\ExceedContextSizeException;
+use Symfony\AI\Platform\Exception\IncompleteStreamException;
 use Symfony\AI\Platform\Exception\RuntimeException;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\HttpStatusErrorHandlingTrait;
@@ -90,7 +91,10 @@ final class ResultConverter implements ResultConverterInterface
     private function convertStream(RawResultInterface $result): \Generator
     {
         $toolCalls = [];
+        $sawChunk = false;
+        $sawMessageEnd = false;
         foreach ($result->getDataStream() as $data) {
+            $sawChunk = true;
             $type = $data['type'] ?? null;
 
             if ('content-delta' === $type) {
@@ -120,9 +124,25 @@ final class ResultConverter implements ResultConverterInterface
                 continue;
             }
 
-            if ('message-end' === $type && [] !== $toolCalls) {
-                yield new ToolCallComplete(array_map($this->convertToolCall(...), $toolCalls));
+            if ('message-end' === $type) {
+                $sawMessageEnd = true;
+
+                $error = $data['delta']['error'] ?? null;
+                $finishReason = $data['delta']['finish_reason'] ?? null;
+                if (null !== $error || 'ERROR' === $finishReason) {
+                    $message = \is_array($error) ? ($error['message'] ?? 'Unknown error') : ($error ?? 'Unknown error');
+
+                    throw new RuntimeException(\sprintf('Cohere stream error: "%s".', $message));
+                }
+
+                if ([] !== $toolCalls) {
+                    yield new ToolCallComplete(array_map($this->convertToolCall(...), $toolCalls));
+                }
             }
+        }
+
+        if ($sawChunk && !$sawMessageEnd) {
+            throw new IncompleteStreamException('Cohere stream ended before message-end.');
         }
     }
 

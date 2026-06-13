@@ -5,6 +5,7 @@ CHANGELOG
 ----
 
  * Throw `ExceedContextSizeException` when a 400 response reports a context overflow
+ * Throw `IncompleteStreamException` when a stream ends before a finish reason
 
 0.9
 ---
