@@ -41,7 +41,7 @@ use Symfony\AI\Platform\ResultConverterInterface;
  * @phpstan-type OutputMessage array{content: array<Refusal|OutputText>, id: string, role: string, type: 'message'}
  * @phpstan-type OutputText array{type: 'output_text', text: string}
  * @phpstan-type Refusal array{type: 'refusal', refusal: string}
- * @phpstan-type FunctionCall array{id: string, arguments: string, call_id: string, name: string, type: 'function_call'}
+ * @phpstan-type FunctionCall array{id?: string|null, arguments: string, call_id?: string|null, name: string, type: 'function_call'}
  * @phpstan-type Thinking array{summary: list<array{type: string, text?: string}>, id: string}
  * @phpstan-type Error array{code?: string|null, type?: string|null, param?: string|null, message?: string|null}
  */
@@ -203,7 +203,8 @@ final class ResultConverter implements ResultConverterInterface
             if ('response.output_item.done' === $type && \is_array($event['item'] ?? null) && 'function_call' === ($event['item']['type'] ?? null)) {
                 /** @var FunctionCall $item */
                 $item = $event['item'];
-                $toolCalls[$item['id']] = $this->convertFunctionCall($item);
+                $toolCall = $this->convertFunctionCall($item);
+                $toolCalls[$toolCall->getId()] = $toolCall;
             }
 
             if ('response.completed' !== $type) {
@@ -278,7 +279,14 @@ final class ResultConverter implements ResultConverterInterface
     {
         $arguments = json_decode($toolCall['arguments'], true, flags: \JSON_THROW_ON_ERROR);
 
-        return new ToolCall($toolCall['id'], $toolCall['name'], $arguments);
+        // The Responses API addresses tool results by "call_id"; some providers (e.g. Scaleway)
+        // only send "call_id" and leave "id" empty, so prefer it and fall back to "id".
+        $id = $toolCall['call_id'] ?? $toolCall['id'] ?? null;
+        if (null === $id) {
+            throw new RuntimeException('Function call is missing both "call_id" and "id".');
+        }
+
+        return new ToolCall($id, $toolCall['name'], $arguments);
     }
 
     /**
