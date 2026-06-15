@@ -155,13 +155,24 @@ class ResultConverter implements ResultConverterInterface
                 $inMessage = true;
             }
 
-            // Handle usage from message_start and message_delta
+            // Anthropic reports usage in both message_start and message_delta:
+            // message_start carries the prompt and cache token counts plus a
+            // provisional output_tokens, and message_delta repeats the same
+            // cumulative prompt/cache counts with the final output_tokens. As
+            // the stream aggregation sums every yielded usage, emitting the full
+            // payload from both events would double-count input and cache tokens.
+            // Yield the prompt/cache counts once (message_start, without the
+            // provisional output) and the final output once (message_delta).
             if ('message_start' === $type && isset($data['message']['usage'])) {
-                yield $this->getTokenUsageExtractor()->extractFromArray($data['message']['usage']);
+                $usage = $data['message']['usage'];
+                unset($usage['output_tokens']);
+                yield $this->getTokenUsageExtractor()->extractFromArray($usage);
             }
 
             if ('message_delta' === $type && isset($data['usage'])) {
-                yield $this->getTokenUsageExtractor()->extractFromArray($data['usage']);
+                yield $this->getTokenUsageExtractor()->extractFromArray([
+                    'output_tokens' => $data['usage']['output_tokens'] ?? 0,
+                ]);
             }
 
             // Handle text content deltas

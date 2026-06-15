@@ -35,6 +35,8 @@ use Symfony\AI\Platform\Result\StreamResult;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\ThinkingResult;
 use Symfony\AI\Platform\Result\ToolCallResult;
+use Symfony\AI\Platform\TokenUsage\StreamListener as TokenUsageStreamListener;
+use Symfony\AI\Platform\TokenUsage\TokenUsageInterface;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\JsonMockResponse;
 use Symfony\Component\HttpClient\Response\MockResponse;
@@ -234,6 +236,54 @@ final class ResultConverterTest extends TestCase
         $this->assertSame('toolu_01ABC123', $toolCalls[0]->getId());
         $this->assertSame('get_weather', $toolCalls[0]->getName());
         $this->assertSame(['location' => 'Berlin'], $toolCalls[0]->getArguments());
+    }
+
+    public function testStreamingUsageIsNotDoubleCounted()
+    {
+        $converter = new ResultConverter();
+
+        $httpResponse = $this->createStub(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
+        // Anthropic repeats the cumulative prompt and cache token counts in
+        // both message_start and message_delta. The stream aggregation sums
+        // every yielded usage, so they must be counted only once.
+        $raw = new InMemoryRawResult([], [
+            ['type' => 'message_start', 'message' => ['id' => 'msg_123', 'type' => 'message', 'role' => 'assistant', 'content' => [], 'usage' => [
+                'input_tokens' => 100,
+                'cache_creation_input_tokens' => 200,
+                'cache_read_input_tokens' => 300,
+                'output_tokens' => 1,
+            ]]],
+            ['type' => 'content_block_start', 'index' => 0, 'content_block' => ['type' => 'text', 'text' => '']],
+            ['type' => 'content_block_delta', 'index' => 0, 'delta' => ['type' => 'text_delta', 'text' => 'Hello']],
+            ['type' => 'content_block_stop', 'index' => 0],
+            ['type' => 'message_delta', 'delta' => ['stop_reason' => 'end_turn'], 'usage' => [
+                'input_tokens' => 100,
+                'cache_creation_input_tokens' => 200,
+                'cache_read_input_tokens' => 300,
+                'output_tokens' => 50,
+            ]],
+            ['type' => 'message_stop'],
+        ], $httpResponse);
+
+        $streamResult = $converter->convert($raw, ['stream' => true]);
+
+        $this->assertInstanceOf(StreamResult::class, $streamResult);
+
+        $streamResult->addListener(new TokenUsageStreamListener());
+
+        foreach ($streamResult->getContent() as $part) {
+            // Drain the stream so the listener aggregates the usage events.
+        }
+
+        $tokenUsage = $streamResult->getMetadata()->get('token_usage');
+
+        $this->assertInstanceOf(TokenUsageInterface::class, $tokenUsage);
+        $this->assertSame(100, $tokenUsage->getPromptTokens());
+        $this->assertSame(200, $tokenUsage->getCacheCreationTokens());
+        $this->assertSame(300, $tokenUsage->getCacheReadTokens());
+        $this->assertSame(50, $tokenUsage->getCompletionTokens());
     }
 
     public function testStreamingThrowsWhenMessageStopIsMissing()
