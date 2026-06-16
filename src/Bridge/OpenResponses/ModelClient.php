@@ -16,6 +16,7 @@ use Symfony\AI\Platform\JsonBodyEncodingTrait;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\ModelClientInterface;
 use Symfony\AI\Platform\Result\RawHttpResult;
+use Symfony\AI\Platform\Result\Stream\RawSseStream;
 use Symfony\AI\Platform\StructuredOutput\PlatformSubscriber;
 use Symfony\Component\HttpClient\EventSourceHttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -67,6 +68,8 @@ class ModelClient implements ModelClientInterface
             $requestOptions['auth_bearer'] = $this->apiKey;
         }
 
-        return new RawHttpResult($this->httpClient->request('POST', $this->baseUrl.$this->path, $requestOptions));
+        // The ChatGPT Codex backend streams SSE without a text/event-stream
+        // content type, so use a stream parser that handles that framing too.
+        return new RawHttpResult($this->httpClient->request('POST', $this->baseUrl.$this->path, $requestOptions), new RawSseStream());
     }
 }
