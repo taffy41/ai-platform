@@ -252,6 +252,48 @@ final class ResultConverterTest extends TestCase
         $this->assertSame('final', $result->getContent());
     }
 
+    public function testThrowsRuntimeExceptionWhenIncompleteResponseHasNoContent()
+    {
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $httpResponse->method('toArray')->willReturn([
+            'status' => 'incomplete',
+            'incomplete_details' => ['reason' => 'max_output_tokens'],
+            'output' => [
+                [
+                    'type' => 'reasoning',
+                    'id' => 'rs_1',
+                    'summary' => [],
+                ],
+            ],
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Responses API response is incomplete (max_output_tokens) and contains no content.');
+
+        $converter->convert(new RawHttpResult($httpResponse));
+    }
+
+    public function testThrowsRuntimeExceptionWhenOutputYieldsNoContent()
+    {
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $httpResponse->method('toArray')->willReturn([
+            'output' => [
+                [
+                    'type' => 'reasoning',
+                    'id' => 'rs_1',
+                    'summary' => [],
+                ],
+            ],
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Response does not contain any content.');
+
+        $converter->convert(new RawHttpResult($httpResponse));
+    }
+
     public function testContentFilterException()
     {
         $converter = new ResultConverter();

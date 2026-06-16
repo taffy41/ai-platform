@@ -6,6 +6,7 @@ CHANGELOG
 
  * Throw `ExceedContextSizeException` when a 400 response reports a context overflow
  * Throw `IncompleteStreamException` when a stream ends before a finish reason
+ * Throw a clear exception when a non-streaming response is incomplete or yields no content, instead of building an empty `MultiPartResult`
 
 0.9
 ---
