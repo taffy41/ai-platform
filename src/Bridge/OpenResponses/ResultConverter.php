@@ -102,6 +102,19 @@ final class ResultConverter implements ResultConverterInterface
 
         $results = $this->convertOutputArray($data[self::KEY_OUTPUT]);
 
+        if ([] === $results) {
+            if ('incomplete' === ($data['status'] ?? null)) {
+                $reason = $data['incomplete_details']['reason'] ?? 'unknown';
+                if (!\is_string($reason) || '' === $reason) {
+                    $reason = 'unknown';
+                }
+
+                throw new RuntimeException(\sprintf('Responses API response is incomplete (%s) and contains no content.', $reason));
+            }
+
+            throw new RuntimeException('Response does not contain any content.');
+        }
+
         return 1 === \count($results) ? array_pop($results) : new MultiPartResult(array_values($results));
     }
 
