@@ -84,11 +84,9 @@ final class ModelClient implements ModelClientInterface
 
         if (isset($options['response_format'])) {
             $schema = $options['response_format']['json_schema']['schema'] ?? [];
-            $options['output_config'] = [
-                'format' => [
-                    'type' => 'json_schema',
-                    'schema' => \is_array($schema) ? $this->normalizeStructuredOutputSchema($schema) : $schema,
-                ],
+            $options['output_config']['format'] = [
+                'type' => 'json_schema',
+                'schema' => \is_array($schema) ? $this->normalizeStructuredOutputSchema($schema) : $schema,
             ];
             unset($options['response_format']);
         }

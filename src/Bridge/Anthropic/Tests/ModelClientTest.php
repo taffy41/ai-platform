@@ -177,6 +177,33 @@ class ModelClientTest extends TestCase
         $this->modelClient->request($this->model, ['message' => 'test'], $options);
     }
 
+    public function testResponseFormatPreservesExistingOutputConfig()
+    {
+        $this->httpClient = new MockHttpClient(function ($method, $url, $options) {
+            $body = json_decode($options['body'], true);
+
+            $this->assertSame('medium', $body['output_config']['effort']);
+            $this->assertSame('json_schema', $body['output_config']['format']['type']);
+            $this->assertSame(['type' => 'object'], $body['output_config']['format']['schema']);
+            $this->assertArrayNotHasKey('response_format', $body);
+
+            return new JsonMockResponse('{"success": true}');
+        });
+
+        $this->modelClient = new ModelClient($this->httpClient, 'test-api-key');
+
+        $options = [
+            'output_config' => ['effort' => 'medium'],
+            'response_format' => [
+                'json_schema' => [
+                    'schema' => ['type' => 'object'],
+                ],
+            ],
+        ];
+
+        $this->modelClient->request($this->model, ['message' => 'test'], $options);
+    }
+
     public function testToolChoiceDefaultsToAutoWhenToolsArePresent()
     {
         $this->httpClient = new MockHttpClient(function ($method, $url, $options) {
