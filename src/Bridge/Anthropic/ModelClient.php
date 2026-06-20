@@ -78,7 +78,9 @@ final class ModelClient implements ModelClientInterface
             $options['tools'] = $this->injectToolsCacheControl($options['tools'], $cacheControl);
         }
 
-        if (isset($options['thinking'])) {
+        // Adaptive thinking enables interleaved thinking on its own; the beta
+        // header is only needed for the legacy enabled/budget_tokens format.
+        if ('enabled' === ($options['thinking']['type'] ?? null)) {
             $options['beta_features'][] = 'interleaved-thinking-2025-05-14';
         }
 

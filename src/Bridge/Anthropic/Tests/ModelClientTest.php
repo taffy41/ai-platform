@@ -121,6 +121,27 @@ class ModelClientTest extends TestCase
         $this->modelClient->request($this->model, ['message' => 'test'], $options);
     }
 
+    public function testAdaptiveThinkingDoesNotAddBetaHeaderAndPassesThrough()
+    {
+        $this->httpClient = new MockHttpClient(function ($method, $url, $options) {
+            $headers = $this->parseHeaders($options['headers']);
+
+            $this->assertArrayNotHasKey('anthropic-beta', $headers);
+
+            $body = json_decode($options['body'], true);
+            $this->assertSame(['type' => 'adaptive'], $body['thinking']);
+
+            return new JsonMockResponse('{"success": true}');
+        });
+
+        $this->modelClient = new ModelClient($this->httpClient, 'test-api-key');
+
+        $options = [
+            'thinking' => ['type' => 'adaptive'],
+        ];
+        $this->modelClient->request($this->model, ['message' => 'test'], $options);
+    }
+
     public function testThinkingBetaHeaderCombinesWithOtherBetaFeatures()
     {
         $this->httpClient = new MockHttpClient(function ($method, $url, $options) {
