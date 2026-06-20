@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.11
+----
+
+ * Throw `ServerException` on server errors (HTTP 5xx) instead of a generic `RuntimeException`
+
 0.10
 ----
 

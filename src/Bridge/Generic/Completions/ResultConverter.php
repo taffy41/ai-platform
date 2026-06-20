@@ -18,6 +18,7 @@ use Symfony\AI\Platform\Exception\ContentFilterException;
 use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\RateLimitExceededException;
 use Symfony\AI\Platform\Exception\RuntimeException;
+use Symfony\AI\Platform\Exception\ServerException;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\ChoiceResult;
 use Symfony\AI\Platform\Result\RawHttpResult;
@@ -65,6 +66,11 @@ class ResultConverter implements ResultConverterInterface
         if (429 === $response->getStatusCode()) {
             $errorMessage = json_decode($response->getContent(false), true)['error']['message'] ?? null;
             throw new RateLimitExceededException(null, $errorMessage);
+        }
+
+        if (($code = $response->getStatusCode()) >= 500) {
+            $errorMessage = json_decode($response->getContent(false), true)['error']['message'] ?? null;
+            throw new ServerException($code, $errorMessage);
         }
 
         if ($options['stream'] ?? false) {

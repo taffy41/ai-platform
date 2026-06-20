@@ -16,6 +16,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Bridge\Gemini\Gemini\ResultConverter;
 use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\RuntimeException;
+use Symfony\AI\Platform\Exception\ServerException;
 use Symfony\AI\Platform\Message\Content\Image;
 use Symfony\AI\Platform\Result\BinaryResult;
 use Symfony\AI\Platform\Result\MultiPartResult;
@@ -41,17 +42,17 @@ final class ResultConverterTest extends TestCase
     {
         $converter = new ResultConverter();
         $httpResponse = $this->createMock(ResponseInterface::class);
-        $httpResponse->method('getStatusCode')->willReturn(500);
+        $httpResponse->method('getStatusCode')->willReturn(403);
         $httpResponse->method('toArray')->willReturn([
             'error' => [
-                'code' => 500,
-                'status' => 'INTERNAL',
-                'message' => 'Internal error encountered.',
+                'code' => 403,
+                'status' => 'PERMISSION_DENIED',
+                'message' => 'The caller does not have permission.',
             ],
         ]);
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Error "500" - "INTERNAL": "Internal error encountered.".');
+        $this->expectExceptionMessage('Error "403" - "PERMISSION_DENIED": "The caller does not have permission.".');
 
         $converter->convert(new RawHttpResult($httpResponse));
     }
@@ -401,15 +402,15 @@ final class ResultConverterTest extends TestCase
         ], ChoiceDelta::class, []];
     }
 
-    public function testThrowsOnUnhandledHttpErrorStatusBeforeStreaming()
+    public function testThrowsServerExceptionOnServerErrorStatusBeforeStreaming()
     {
         $converter = new ResultConverter();
         $httpResponse = $this->createMock(ResponseInterface::class);
         $httpResponse->method('getStatusCode')->willReturn(500);
         $httpResponse->method('getContent')->willReturn('Service Unavailable');
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Unexpected response code 500');
+        $this->expectException(ServerException::class);
+        $this->expectExceptionMessage('Server error (HTTP 500');
 
         $converter->convert(new RawHttpResult($httpResponse), ['stream' => true]);
     }

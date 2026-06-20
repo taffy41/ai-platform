@@ -12,7 +12,9 @@
 namespace Symfony\AI\Platform\Bridge\Generic\Completions;
 
 use Symfony\AI\Platform\Exception\IncompleteStreamException;
+use Symfony\AI\Platform\Exception\RateLimitExceededException;
 use Symfony\AI\Platform\Exception\RuntimeException;
+use Symfony\AI\Platform\Exception\ServerException;
 use Symfony\AI\Platform\Result\RawResultInterface;
 use Symfony\AI\Platform\Result\Stream\Delta\TextDelta;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingComplete;
@@ -45,7 +47,19 @@ trait CompletionsConversionTrait
         foreach ($result->getDataStream() as $data) {
             if (isset($data['error'])) {
                 $message = \is_array($data['error']) ? ($data['error']['message'] ?? 'Unknown error') : (string) $data['error'];
-                throw new RuntimeException(\sprintf('Stream error: "%s".', $message));
+                $code = \is_array($data['error']) ? ($data['error']['code'] ?? null) : null;
+                $type = \is_array($data['error']) ? ($data['error']['type'] ?? null) : null;
+                $errorMessage = \sprintf('Stream error: "%s".', $message);
+
+                if ($this->isRateLimitError($code, $type)) {
+                    throw new RateLimitExceededException(null, $errorMessage);
+                }
+
+                if ($this->isServerError($code, $type)) {
+                    throw new ServerException(null, $errorMessage);
+                }
+
+                throw new RuntimeException($errorMessage);
             }
 
             $sawChunk = true;
@@ -225,5 +239,17 @@ trait CompletionsConversionTrait
         }
 
         return new ToolCall($toolCall['id'], $toolCall['function']['name'], $arguments);
+    }
+
+    private function isRateLimitError(mixed $code, mixed $type): bool
+    {
+        return \in_array($code, ['rate_limit_exceeded', 'rate_limit_error', 'too_many_requests'], true)
+            || \in_array($type, ['rate_limit_exceeded', 'rate_limit_error', 'too_many_requests'], true);
+    }
+
+    private function isServerError(mixed $code, mixed $type): bool
+    {
+        return \in_array($code, ['server_error', 'internal_error'], true)
+            || \in_array($type, ['server_error', 'internal_error'], true);
     }
 }

@@ -17,6 +17,7 @@ use Symfony\AI\Platform\Exception\ContentFilterException;
 use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\ModelNotFoundException;
 use Symfony\AI\Platform\Exception\RuntimeException;
+use Symfony\AI\Platform\Exception\ServerException;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\ChoiceResult;
 use Symfony\AI\Platform\Result\RawHttpResult;
@@ -40,6 +41,11 @@ final class ResultConverter implements ResultConverterInterface
 
     public function convert(RawResultInterface|RawHttpResult $result, array $options = []): ResultInterface
     {
+        if (($code = $result->getObject()->getStatusCode()) >= 500) {
+            $errorMessage = json_decode($result->getObject()->getContent(false), true)['error']['message'] ?? null;
+            throw new ServerException($code, $errorMessage);
+        }
+
         if ($options['stream'] ?? false) {
             if (($code = $result->getObject()->getStatusCode()) >= 400) {
                 throw new RuntimeException(\sprintf('Unexpected response code %d: "%s"', $code, $result->getObject()->getContent(false)));

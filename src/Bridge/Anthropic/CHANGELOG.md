@@ -6,6 +6,8 @@ CHANGELOG
 
  * Add a `baseUrl` argument to `ModelClient` and the factory to target Anthropic-compatible endpoints
  * Extract prompt-caching injection into a reusable `PromptCachingTrait` so alternative model clients can share it
+ * Throw `ServerException` on server errors (HTTP 5xx) and on `overloaded_error` / `api_error` events, including mid-stream, instead of a generic `RuntimeException`
+ * Throw `RateLimitExceededException` on rate limit error events
  * Raise a `RuntimeException` on unhandled HTTP error statuses before streaming, instead of returning an empty stream
 
 0.10

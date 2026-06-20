@@ -14,9 +14,11 @@ namespace Symfony\AI\Platform\Bridge\Anthropic\Tests;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Bridge\Anthropic\ResultConverter;
 use Symfony\AI\Platform\Exception\RateLimitExceededException;
+use Symfony\AI\Platform\Result\InMemoryRawResult;
 use Symfony\AI\Platform\Result\RawHttpResult;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 final class ResultConverterRateLimitTest extends TestCase
 {
@@ -65,5 +67,40 @@ final class ResultConverterRateLimitTest extends TestCase
             $this->assertNull($e->getRetryAfter());
             throw $e;
         }
+    }
+
+    public function testRateLimitErrorBodyThrowsException()
+    {
+        $httpClient = new MockHttpClient([
+            new MockResponse('{"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed the rate limit for your organization"}}'),
+        ]);
+
+        $httpResponse = $httpClient->request('POST', 'https://api.anthropic.com/v1/messages');
+        $handler = new ResultConverter();
+
+        $this->expectException(RateLimitExceededException::class);
+        $this->expectExceptionMessage('Rate limit exceeded. API Error [rate_limit_error]: "This request would exceed the rate limit for your organization"');
+
+        $handler->convert(new RawHttpResult($httpResponse));
+    }
+
+    public function testStreamRateLimitErrorEventThrowsException()
+    {
+        $httpResponse = $this->createStub(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+        $handler = new ResultConverter();
+
+        $streamResult = $handler->convert(new InMemoryRawResult([], [[
+            'type' => 'error',
+            'error' => [
+                'type' => 'rate_limit_error',
+                'message' => 'This request would exceed the rate limit for your organization',
+            ],
+        ]], $httpResponse), ['stream' => true]);
+
+        $this->expectException(RateLimitExceededException::class);
+        $this->expectExceptionMessage('Rate limit exceeded. This request would exceed the rate limit for your organization');
+
+        iterator_to_array($streamResult->getContent());
     }
 }

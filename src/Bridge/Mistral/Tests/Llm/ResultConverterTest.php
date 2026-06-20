@@ -16,7 +16,7 @@ use Symfony\AI\Platform\Bridge\Mistral\Llm\ResultConverter;
 use Symfony\AI\Platform\Bridge\Mistral\Mistral;
 use Symfony\AI\Platform\Exception\BadRequestException;
 use Symfony\AI\Platform\Exception\ExceedContextSizeException;
-use Symfony\AI\Platform\Exception\RuntimeException;
+use Symfony\AI\Platform\Exception\ServerException;
 use Symfony\AI\Platform\Result\RawHttpResult;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -85,14 +85,14 @@ final class ResultConverterTest extends TestCase
         $converter->convert(new RawHttpResult($httpResponse));
     }
 
-    public function testThrowsOnUnhandledHttpErrorStatusBeforeStreaming()
+    public function testThrowsServerExceptionOnServerErrorStatusBeforeStreaming()
     {
         $httpClient = new MockHttpClient(new JsonMockResponse(['error' => 'Service Unavailable'], ['http_code' => 500]));
         $httpResponse = $httpClient->request('POST', 'https://example.com');
         $converter = new ResultConverter();
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Unexpected response code 500');
+        $this->expectException(ServerException::class);
+        $this->expectExceptionMessage('Server error (HTTP 500');
 
         $converter->convert(new RawHttpResult($httpResponse), ['stream' => true]);
     }

@@ -19,7 +19,9 @@ use Symfony\AI\Platform\Exception\BadRequestException;
 use Symfony\AI\Platform\Exception\ContentFilterException;
 use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\IncompleteStreamException;
+use Symfony\AI\Platform\Exception\RateLimitExceededException;
 use Symfony\AI\Platform\Exception\RuntimeException;
+use Symfony\AI\Platform\Exception\ServerException;
 use Symfony\AI\Platform\Result\ChoiceResult;
 use Symfony\AI\Platform\Result\InMemoryRawResult;
 use Symfony\AI\Platform\Result\RawHttpResult;
@@ -349,17 +351,20 @@ class ResultConverterTest extends TestCase
         $converter->convert(new RawHttpResult($httpResponse), ['stream' => true]);
     }
 
-    public function testThrowsOnServerErrorStatus()
+    public function testThrowsServerExceptionOnServerErrorStatus()
     {
         $converter = new ResultConverter();
         $httpResponse = $this->createMock(ResponseInterface::class);
         $httpResponse->method('getStatusCode')->willReturn(503);
-        $httpResponse->method('getContent')->willReturn('service unavailable');
+        $httpResponse->method('getContent')->willReturn('{"error":{"message":"service unavailable"}}');
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Unexpected response code 503: "service unavailable"');
-
-        $converter->convert(new RawHttpResult($httpResponse), ['stream' => true]);
+        try {
+            $converter->convert(new RawHttpResult($httpResponse), ['stream' => true]);
+            $this->fail('Expected a ServerException to be thrown.');
+        } catch (ServerException $e) {
+            $this->assertSame(503, $e->getStatusCode());
+            $this->assertStringContainsString('service unavailable', $e->getMessage());
+        }
     }
 
     public function testThrowsDetailedErrorException()
@@ -524,13 +529,41 @@ class ResultConverterTest extends TestCase
 
         $events = [
             ['choices' => [['index' => 0, 'delta' => ['content' => 'partial']]]],
-            ['error' => ['message' => 'Provider exploded mid-stream', 'code' => 'server_error']],
+            ['error' => ['message' => 'Invalid model', 'code' => 'invalid_request_error']],
         ];
 
         $streamResult = $converter->convert(new InMemoryRawResult([], $events, $this->httpResponseStub()), ['stream' => true]);
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Stream error: "Provider exploded mid-stream".');
+        $this->expectExceptionMessage('Stream error: "Invalid model".');
+
+        iterator_to_array($streamResult->getContent());
+    }
+
+    public function testStreamingThrowsServerExceptionOnServerErrorEvent()
+    {
+        $converter = new ResultConverter();
+
+        $streamResult = $converter->convert(new InMemoryRawResult([], [[
+            'error' => ['message' => 'Provider exploded mid-stream', 'code' => 'server_error'],
+        ]], $this->httpResponseStub()), ['stream' => true]);
+
+        $this->expectException(ServerException::class);
+        $this->expectExceptionMessage('Server error. Stream error: "Provider exploded mid-stream".');
+
+        iterator_to_array($streamResult->getContent());
+    }
+
+    public function testStreamingThrowsRateLimitExceptionOnRateLimitEvent()
+    {
+        $converter = new ResultConverter();
+
+        $streamResult = $converter->convert(new InMemoryRawResult([], [[
+            'error' => ['message' => 'Too many requests', 'code' => 'rate_limit_error'],
+        ]], $this->httpResponseStub()), ['stream' => true]);
+
+        $this->expectException(RateLimitExceededException::class);
+        $this->expectExceptionMessage('Rate limit exceeded. Stream error: "Too many requests".');
 
         iterator_to_array($streamResult->getContent());
     }

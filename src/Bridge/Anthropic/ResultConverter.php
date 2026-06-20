@@ -17,6 +17,7 @@ use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\IncompleteStreamException;
 use Symfony\AI\Platform\Exception\RateLimitExceededException;
 use Symfony\AI\Platform\Exception\RuntimeException;
+use Symfony\AI\Platform\Exception\ServerException;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\CodeExecutionResult;
 use Symfony\AI\Platform\Result\ExecutableCodeResult;
@@ -75,6 +76,11 @@ class ResultConverter implements ResultConverterInterface
             throw new RateLimitExceededException($retryAfterValue, $errorMessage);
         }
 
+        if (($code = $response->getStatusCode()) >= 500) {
+            $errorMessage = json_decode($response->getContent(false), true)['error']['message'] ?? null;
+            throw new ServerException($code, $errorMessage);
+        }
+
         if ($options['stream'] ?? false) {
             if (($code = $response->getStatusCode()) >= 400) {
                 throw new RuntimeException(\sprintf('Unexpected response code %d: "%s"', $code, $response->getContent(false)));
@@ -88,6 +94,15 @@ class ResultConverter implements ResultConverterInterface
         if (isset($data['type']) && 'error' === $data['type']) {
             $type = $data['error']['type'] ?? 'Unknown';
             $message = $data['error']['message'] ?? 'An unknown error occurred.';
+
+            if ('rate_limit_error' === $type) {
+                throw new RateLimitExceededException(null, \sprintf('API Error [%s]: "%s"', $type, $message));
+            }
+
+            if (\in_array($type, ['overloaded_error', 'api_error'], true)) {
+                throw new ServerException(null, \sprintf('API Error [%s]: "%s"', $type, $message));
+            }
+
             throw new RuntimeException(\sprintf('API Error [%s]: "%s"', $type, $message));
         }
 
@@ -152,7 +167,17 @@ class ResultConverter implements ResultConverterInterface
             $type = $data['type'] ?? '';
 
             if ('error' === $type) {
-                throw new RuntimeException($data['error']['message'] ?? 'Unknown Anthropic stream error.');
+                $message = $data['error']['message'] ?? 'Unknown Anthropic stream error.';
+
+                if ('rate_limit_error' === ($data['error']['type'] ?? null)) {
+                    throw new RateLimitExceededException(null, $message);
+                }
+
+                if (\in_array($data['error']['type'] ?? null, ['overloaded_error', 'api_error'], true)) {
+                    throw new ServerException(null, $message);
+                }
+
+                throw new RuntimeException($message);
             }
 
             if ('message_start' === $type) {

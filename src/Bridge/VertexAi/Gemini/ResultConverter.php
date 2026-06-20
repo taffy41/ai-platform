@@ -14,6 +14,7 @@ namespace Symfony\AI\Platform\Bridge\VertexAi\Gemini;
 use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\RateLimitExceededException;
 use Symfony\AI\Platform\Exception\RuntimeException;
+use Symfony\AI\Platform\Exception\ServerException;
 use Symfony\AI\Platform\Model as BaseModel;
 use Symfony\AI\Platform\Result\BinaryResult;
 use Symfony\AI\Platform\Result\ChoiceResult;
@@ -77,6 +78,11 @@ final class ResultConverter implements ResultConverterInterface
             ) {
                 throw new ExceedContextSizeException($errorMessage);
             }
+        }
+
+        if (($code = $response->getStatusCode()) >= 500) {
+            $errorMessage = json_decode($response->getContent(false), true)['error']['message'] ?? null;
+            throw new ServerException($code, $errorMessage);
         }
 
         if ($options['stream'] ?? false) {

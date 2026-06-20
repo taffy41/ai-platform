@@ -21,6 +21,7 @@ use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\IncompleteStreamException;
 use Symfony\AI\Platform\Exception\RateLimitExceededException;
 use Symfony\AI\Platform\Exception\RuntimeException;
+use Symfony\AI\Platform\Exception\ServerException;
 use Symfony\AI\Platform\Result\InMemoryRawResult;
 use Symfony\AI\Platform\Result\MultiPartResult;
 use Symfony\AI\Platform\Result\RawHttpResult;
@@ -783,6 +784,48 @@ final class ResultConverterTest extends TestCase
         ], 'Responses API stream ended incomplete (max_tokens).'];
     }
 
+    public function testStreamThrowsRateLimitExceptionOnRateLimitEvent()
+    {
+        $converter = new ResultConverter();
+
+        $httpResponse = $this->createStub(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
+        $streamResult = $converter->convert(new InMemoryRawResult([], [[
+            'type' => 'error',
+            'code' => 'rate_limit_exceeded',
+            'message' => 'Rate limit reached for requests',
+        ]], $httpResponse), ['stream' => true]);
+
+        $this->expectException(RateLimitExceededException::class);
+        $this->expectExceptionMessage('Rate limit exceeded. Error "rate_limit_exceeded"-- (-): "Rate limit reached for requests".');
+
+        iterator_to_array($streamResult->getContent());
+    }
+
+    public function testStreamThrowsServerExceptionOnServerErrorEvent()
+    {
+        $converter = new ResultConverter();
+
+        $httpResponse = $this->createStub(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
+        $streamResult = $converter->convert(new InMemoryRawResult([], [[
+            'type' => 'response.failed',
+            'response' => [
+                'error' => [
+                    'code' => 'server_error',
+                    'message' => 'The model failed to generate a response',
+                ],
+            ],
+        ]], $httpResponse), ['stream' => true]);
+
+        $this->expectException(ServerException::class);
+        $this->expectExceptionMessage('Server error. Error "server_error"-- (-): "The model failed to generate a response".');
+
+        iterator_to_array($streamResult->getContent());
+    }
+
     public function testStreamThrowsExceptionOnErrorEvent()
     {
         $converter = new ResultConverter();
@@ -866,16 +909,19 @@ final class ResultConverterTest extends TestCase
         $this->assertSame('The answer is 42.', $chunks[4]->getText());
     }
 
-    public function testThrowsOnUnhandledHttpErrorStatusBeforeStreaming()
+    public function testThrowsServerExceptionOnServerErrorStatusBeforeStreaming()
     {
         $converter = new ResultConverter();
         $httpResponse = $this->createMock(ResponseInterface::class);
         $httpResponse->method('getStatusCode')->willReturn(500);
-        $httpResponse->method('getContent')->willReturn('Service Unavailable');
+        $httpResponse->method('getContent')->willReturn('{"error":{"message":"Service Unavailable"}}');
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Unexpected response code 500');
-
-        $converter->convert(new RawHttpResult($httpResponse), ['stream' => true]);
+        try {
+            $converter->convert(new RawHttpResult($httpResponse), ['stream' => true]);
+            $this->fail('Expected a ServerException to be thrown.');
+        } catch (ServerException $e) {
+            $this->assertSame(500, $e->getStatusCode());
+            $this->assertStringContainsString('Service Unavailable', $e->getMessage());
+        }
     }
 }

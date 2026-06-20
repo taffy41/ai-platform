@@ -4,6 +4,7 @@ CHANGELOG
 0.11
 ----
 
+ * Throw `ServerException` on server errors (HTTP 5xx) instead of a generic `RuntimeException`
  * Raise a `RuntimeException` on unhandled HTTP error statuses before streaming, instead of returning an empty stream
  * Add OCR support by `mistral-ocr-latest` model and `/v1/ocr` endpoint, returning a typed `OcrResult` with pages, layout images and annotations
 

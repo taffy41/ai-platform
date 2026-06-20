@@ -15,6 +15,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Bridge\Cohere\SpeechToText;
 use Symfony\AI\Platform\Bridge\Cohere\SpeechToText\ResultConverter;
 use Symfony\AI\Platform\Exception\RuntimeException;
+use Symfony\AI\Platform\Exception\ServerException;
 use Symfony\AI\Platform\Result\RawHttpResult;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -36,8 +37,8 @@ final class ResultConverterTest extends TestCase
 
         $converter = new ResultConverter();
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Unexpected response code 500');
+        $this->expectException(ServerException::class);
+        $this->expectExceptionMessage('Server error (HTTP 500');
 
         $converter->convert(new RawHttpResult($response));
     }

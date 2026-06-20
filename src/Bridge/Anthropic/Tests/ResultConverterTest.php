@@ -17,6 +17,7 @@ use Symfony\AI\Platform\Exception\BadRequestException;
 use Symfony\AI\Platform\Exception\ExceedContextSizeException;
 use Symfony\AI\Platform\Exception\IncompleteStreamException;
 use Symfony\AI\Platform\Exception\RuntimeException;
+use Symfony\AI\Platform\Exception\ServerException;
 use Symfony\AI\Platform\Result\CodeExecutionResult;
 use Symfony\AI\Platform\Result\ExecutableCodeResult;
 use Symfony\AI\Platform\Result\InMemoryRawResult;
@@ -599,16 +600,64 @@ final class ResultConverterTest extends TestCase
         $this->assertSame('sig_xyz', $result->getSignature());
     }
 
+    public function testThrowsServerExceptionOnServerErrorStatusBeforeStreaming()
+    {
+        $httpClient = new MockHttpClient(new JsonMockResponse(['error' => ['message' => 'Service Unavailable']], ['http_code' => 503]));
+        $httpResponse = $httpClient->request('POST', 'https://example.com');
+        $converter = new ResultConverter();
+
+        try {
+            $converter->convert(new RawHttpResult($httpResponse), ['stream' => true]);
+            $this->fail('Expected a ServerException to be thrown.');
+        } catch (ServerException $e) {
+            $this->assertSame(503, $e->getStatusCode());
+            $this->assertStringContainsString('Service Unavailable', $e->getMessage());
+        }
+    }
+
     public function testThrowsOnUnhandledHttpErrorStatusBeforeStreaming()
     {
-        $httpClient = new MockHttpClient(new JsonMockResponse(['error' => 'Service Unavailable'], ['http_code' => 500]));
+        $httpClient = new MockHttpClient(new JsonMockResponse(['error' => 'Teapot'], ['http_code' => 418]));
         $httpResponse = $httpClient->request('POST', 'https://example.com');
         $converter = new ResultConverter();
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Unexpected response code 500');
+        $this->expectExceptionMessage('Unexpected response code 418');
 
         $converter->convert(new RawHttpResult($httpResponse), ['stream' => true]);
+    }
+
+    public function testThrowsServerExceptionOnOverloadedErrorEventMidStream()
+    {
+        $converter = new ResultConverter();
+        $raw = $this->createRawResult([
+            ['type' => 'error', 'error' => ['type' => 'overloaded_error', 'message' => 'Overloaded']],
+        ]);
+
+        $streamResult = $converter->convert($raw, ['stream' => true]);
+
+        $this->expectException(ServerException::class);
+        $this->expectExceptionMessage('Overloaded');
+
+        iterator_to_array($streamResult->getContent());
+    }
+
+    public function testDoesNotThrowServerExceptionOnClientErrorEventMidStream()
+    {
+        $converter = new ResultConverter();
+        $raw = $this->createRawResult([
+            ['type' => 'error', 'error' => ['type' => 'invalid_request_error', 'message' => 'Bad input']],
+        ]);
+
+        $streamResult = $converter->convert($raw, ['stream' => true]);
+
+        try {
+            iterator_to_array($streamResult->getContent());
+            $this->fail('Expected a RuntimeException to be thrown.');
+        } catch (RuntimeException $e) {
+            $this->assertNotInstanceOf(ServerException::class, $e);
+            $this->assertStringContainsString('Bad input', $e->getMessage());
+        }
     }
 
     /**
