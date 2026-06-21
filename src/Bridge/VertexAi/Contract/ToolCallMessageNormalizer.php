@@ -13,6 +13,9 @@ namespace Symfony\AI\Platform\Bridge\VertexAi\Contract;
 
 use Symfony\AI\Platform\Bridge\VertexAi\Gemini\Model;
 use Symfony\AI\Platform\Contract\Normalizer\ModelContractNormalizer;
+use Symfony\AI\Platform\Exception\RuntimeException;
+use Symfony\AI\Platform\Message\Content\Image;
+use Symfony\AI\Platform\Message\Content\Text;
 use Symfony\AI\Platform\Message\ToolCallMessage;
 use Symfony\AI\Platform\Model as BaseModel;
 
@@ -24,20 +27,22 @@ final class ToolCallMessageNormalizer extends ModelContractNormalizer
     /**
      * @param ToolCallMessage $data
      *
-     * @return array{
-     *      functionResponse: array{
+     * @return array<array{
+     *      functionResponse?: array{
      *          name: string,
      *          response: array<int|string, mixed>
-     *      }
-     *  }[]
+     *      },
+     *      inlineData?: array{mimeType: string, data: string}
+     *  }>
      *
      * @throws \JsonException
      */
     public function normalize(mixed $data, ?string $format = null, array $context = []): array
     {
-        $resultContent = json_validate($data->getContent()) ? json_decode($data->getContent(), true, 512, \JSON_THROW_ON_ERROR) : $data->getContent();
+        $text = $data->asText() ?? '';
+        $resultContent = json_validate($text) ? json_decode($text, true, 512, \JSON_THROW_ON_ERROR) : $text;
 
-        return [[
+        $parts = [[
             'functionResponse' => array_filter([
                 'name' => $data->getToolCall()->getName(),
                 'response' => \is_array($resultContent) ? $resultContent : [
@@ -45,6 +50,25 @@ final class ToolCallMessageNormalizer extends ModelContractNormalizer
                 ],
             ]),
         ]];
+
+        foreach ($data->getContent() as $part) {
+            if ($part instanceof Text) {
+                continue;
+            }
+
+            if ($part instanceof Image) {
+                $parts[] = ['inlineData' => [
+                    'mimeType' => $part->getFormat(),
+                    'data' => $part->asBase64(),
+                ]];
+
+                continue;
+            }
+
+            throw new RuntimeException(\sprintf('Unsupported tool result content part of type "%s".', get_debug_type($part)));
+        }
+
+        return $parts;
     }
 
     protected function supportedDataClass(): string

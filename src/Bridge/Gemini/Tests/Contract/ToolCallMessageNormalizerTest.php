@@ -16,6 +16,10 @@ use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Bridge\Gemini\Contract\ToolCallMessageNormalizer;
 use Symfony\AI\Platform\Bridge\Gemini\Gemini;
 use Symfony\AI\Platform\Contract;
+use Symfony\AI\Platform\Exception\RuntimeException;
+use Symfony\AI\Platform\Message\Content\Audio;
+use Symfony\AI\Platform\Message\Content\Image;
+use Symfony\AI\Platform\Message\Content\Text;
 use Symfony\AI\Platform\Message\ToolCallMessage;
 use Symfony\AI\Platform\Result\ToolCall;
 
@@ -25,7 +29,7 @@ final class ToolCallMessageNormalizerTest extends TestCase
     {
         $normalizer = new ToolCallMessageNormalizer();
 
-        $this->assertTrue($normalizer->supportsNormalization(new ToolCallMessage(new ToolCall('', '', []), ''), context: [
+        $this->assertTrue($normalizer->supportsNormalization(new ToolCallMessage(new ToolCall('', '', []), new Text('')), context: [
             Contract::CONTEXT_MODEL => new Gemini('gemini-2.0-flash'),
         ]));
         $this->assertFalse($normalizer->supportsNormalization('not a tool call'));
@@ -55,6 +59,19 @@ final class ToolCallMessageNormalizerTest extends TestCase
         $this->assertEquals($expected, $normalized);
     }
 
+    public function testNormalizeRejectsUnsupportedContentPart()
+    {
+        $normalizer = new ToolCallMessageNormalizer();
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unsupported tool result content part of type "Symfony\\AI\\Platform\\Message\\Content\\Audio".');
+
+        $normalizer->normalize(new ToolCallMessage(
+            new ToolCall('id1', 'transcription', []),
+            new Text('Here is the recording'), new Audio('binary', 'audio/mpeg'),
+        ));
+    }
+
     /**
      * @return iterable<array{0: ToolCallMessage, 1: array}>
      */
@@ -63,7 +80,7 @@ final class ToolCallMessageNormalizerTest extends TestCase
         yield 'scalar' => [
             new ToolCallMessage(
                 new ToolCall('id1', 'name1', ['foo' => 'bar']),
-                'true',
+                new Text('true'),
             ),
             [[
                 'functionResponse' => [
@@ -77,7 +94,7 @@ final class ToolCallMessageNormalizerTest extends TestCase
         yield 'structured response' => [
             new ToolCallMessage(
                 new ToolCall('id1', 'name1', ['foo' => 'bar']),
-                '{"structured":"response"}',
+                new Text('{"structured":"response"}'),
             ),
             [[
                 'functionResponse' => [
@@ -91,7 +108,7 @@ final class ToolCallMessageNormalizerTest extends TestCase
         yield 'list response is wrapped as a Protobuf Struct' => [
             new ToolCallMessage(
                 new ToolCall('id1', 'name1', ['foo' => 'bar']),
-                '["foo","bar"]',
+                new Text('["foo","bar"]'),
             ),
             [[
                 'functionResponse' => [
@@ -105,7 +122,7 @@ final class ToolCallMessageNormalizerTest extends TestCase
         yield 'empty id is omitted' => [
             new ToolCallMessage(
                 new ToolCall('', 'name1', ['foo' => 'bar']),
-                '{"structured":"response"}',
+                new Text('{"structured":"response"}'),
             ),
             [[
                 'functionResponse' => [
@@ -113,6 +130,28 @@ final class ToolCallMessageNormalizerTest extends TestCase
                     'response' => ['result' => ['structured' => 'response']],
                 ],
             ]],
+        ];
+
+        yield 'multimodal result adds inline_data parts' => [
+            new ToolCallMessage(
+                new ToolCall('id1', 'screenshot', []),
+                new Text('Here is the screenshot'), new Image('binary', 'image/png'),
+            ),
+            [
+                [
+                    'functionResponse' => [
+                        'name' => 'screenshot',
+                        'response' => ['result' => 'Here is the screenshot'],
+                        'id' => 'id1',
+                    ],
+                ],
+                [
+                    'inline_data' => [
+                        'mime_type' => 'image/png',
+                        'data' => base64_encode('binary'),
+                    ],
+                ],
+            ],
         ];
     }
 }

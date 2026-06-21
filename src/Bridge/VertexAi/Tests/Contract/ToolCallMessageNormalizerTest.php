@@ -16,6 +16,10 @@ use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Bridge\VertexAi\Contract\ToolCallMessageNormalizer;
 use Symfony\AI\Platform\Bridge\VertexAi\Gemini\Model;
 use Symfony\AI\Platform\Contract;
+use Symfony\AI\Platform\Exception\RuntimeException;
+use Symfony\AI\Platform\Message\Content\Audio;
+use Symfony\AI\Platform\Message\Content\Image;
+use Symfony\AI\Platform\Message\Content\Text;
 use Symfony\AI\Platform\Message\ToolCallMessage;
 use Symfony\AI\Platform\Result\ToolCall;
 
@@ -25,7 +29,7 @@ final class ToolCallMessageNormalizerTest extends TestCase
     {
         $normalizer = new ToolCallMessageNormalizer();
 
-        $this->assertTrue($normalizer->supportsNormalization(new ToolCallMessage(new ToolCall('', '', []), ''), context: [
+        $this->assertTrue($normalizer->supportsNormalization(new ToolCallMessage(new ToolCall('', '', []), new Text('')), context: [
             Contract::CONTEXT_MODEL => new Model('gemini-2.5-pro'),
         ]));
         $this->assertFalse($normalizer->supportsNormalization('not a tool call'));
@@ -55,6 +59,19 @@ final class ToolCallMessageNormalizerTest extends TestCase
         $this->assertEquals($expected, $normalized);
     }
 
+    public function testNormalizeRejectsUnsupportedContentPart()
+    {
+        $normalizer = new ToolCallMessageNormalizer();
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Unsupported tool result content part of type "Symfony\\AI\\Platform\\Message\\Content\\Audio".');
+
+        $normalizer->normalize(new ToolCallMessage(
+            new ToolCall('transcription', 'transcription', []),
+            new Text('Here is the recording'), new Audio('binary', 'audio/mpeg'),
+        ));
+    }
+
     /**
      * @return iterable<array{0: ToolCallMessage, 1: array}>
      */
@@ -63,7 +80,7 @@ final class ToolCallMessageNormalizerTest extends TestCase
         yield 'scalar' => [
             new ToolCallMessage(
                 new ToolCall('name1', 'name1', ['foo' => 'bar']),
-                'true',
+                new Text('true'),
             ),
             [[
                 'functionResponse' => [
@@ -76,7 +93,7 @@ final class ToolCallMessageNormalizerTest extends TestCase
         yield 'structured response' => [
             new ToolCallMessage(
                 new ToolCall('name1', 'name1', ['foo' => 'bar']),
-                '{"structured":"response"}',
+                new Text('{"structured":"response"}'),
             ),
             [[
                 'functionResponse' => [
@@ -84,6 +101,27 @@ final class ToolCallMessageNormalizerTest extends TestCase
                     'response' => ['structured' => 'response'],
                 ],
             ]],
+        ];
+
+        yield 'multimodal result adds inlineData parts' => [
+            new ToolCallMessage(
+                new ToolCall('screenshot', 'screenshot', []),
+                new Text('Here is the screenshot'), new Image('binary', 'image/png'),
+            ),
+            [
+                [
+                    'functionResponse' => [
+                        'name' => 'screenshot',
+                        'response' => ['rawResponse' => 'Here is the screenshot'],
+                    ],
+                ],
+                [
+                    'inlineData' => [
+                        'mimeType' => 'image/png',
+                        'data' => base64_encode('binary'),
+                    ],
+                ],
+            ],
         ];
     }
 }

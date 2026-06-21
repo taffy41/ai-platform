@@ -27,13 +27,13 @@ class ToolCallMessageNormalizerTest extends TestCase
     public function testNormalize()
     {
         $toolCall = new ToolCall('some-id', 'roll-die', ['sides' => 24]);
-        $toolCallMessage = new ToolCallMessage($toolCall, 'Critical hit!');
+        $toolCallMessage = new ToolCallMessage($toolCall, new Text('Critical hit!'));
 
         $actual = (new ToolCallMessageNormalizer())->normalize($toolCallMessage, null, [Contract::CONTEXT_MODEL => new Gpt('o3')]);
         $this->assertEquals([
             'type' => 'function_call_output',
             'call_id' => $toolCall->getId(),
-            'output' => $toolCallMessage->getContent(),
+            'output' => $toolCallMessage->asText(),
         ], $actual);
     }
 
@@ -50,7 +50,7 @@ class ToolCallMessageNormalizerTest extends TestCase
     {
         $toolCallMessage = new ToolCallMessage(
             new ToolCall('some-id', 'roll-die', ['sides' => 24]),
-            'Critical hit!'
+            new Text('Critical hit!')
         );
         $responsesModel = new ResponsesModel('gpt-5-mini');
 
