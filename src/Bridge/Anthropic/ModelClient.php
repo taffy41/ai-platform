@@ -28,23 +28,27 @@ final class ModelClient implements ModelClientInterface
     use JsonSchemaSanitizerTrait;
 
     private readonly EventSourceHttpClient $httpClient;
+    private readonly string $baseUrl;
 
     /**
      * @param 'none'|'short'|'long' $cacheRetention Controls Anthropic prompt-caching retention:
      *                                              - 'short': 5-minute cache window (default Anthropic ephemeral TTL)
      *                                              - 'long':  1-hour cache window; only available on api.anthropic.com
      *                                              - 'none':  prompt caching disabled
+     * @param string                $baseUrl        Base URL of an Anthropic-compatible endpoint, without trailing slash
      */
     public function __construct(
         HttpClientInterface $httpClient,
         #[\SensitiveParameter] private readonly string $apiKey,
         private readonly string $cacheRetention = 'short',
+        string $baseUrl = 'https://api.anthropic.com',
     ) {
         if (!\in_array($cacheRetention, ['none', 'short', 'long'], true)) {
             throw new InvalidArgumentException(\sprintf('Invalid cache retention "%s". Supported values are "none", "short" and "long".', $cacheRetention));
         }
 
         $this->httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
+        $this->baseUrl = rtrim($baseUrl, '/');
     }
 
     public function supports(Model $model): bool
@@ -92,7 +96,7 @@ final class ModelClient implements ModelClientInterface
             unset($options['beta_features']);
         }
 
-        return new RawHttpResult($this->httpClient->request('POST', 'https://api.anthropic.com/v1/messages', [
+        return new RawHttpResult($this->httpClient->request('POST', $this->baseUrl.'/v1/messages', [
             'headers' => $headers,
             'body' => $this->encodeJsonBody(array_merge($options, $payload)),
         ]));

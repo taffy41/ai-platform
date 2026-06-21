@@ -266,6 +266,19 @@ class ModelClientTest extends TestCase
         $this->modelClient->request($this->model, $payload);
     }
 
+    public function testCustomBaseUrlIsUsedForTheRequest()
+    {
+        $this->httpClient = new MockHttpClient(function ($method, $url) {
+            $this->assertSame('https://anthropic.example.com/v1/messages', $url);
+
+            return new JsonMockResponse('{"success": true}');
+        });
+
+        $this->modelClient = new ModelClient($this->httpClient, 'test-api-key', 'short', 'https://anthropic.example.com/');
+
+        $this->modelClient->request($this->model, ['messages' => [['role' => 'user', 'content' => 'Hello']]]);
+    }
+
     public function testNoneCacheRetentionDoesNotInject()
     {
         $this->httpClient = new MockHttpClient(function ($method, $url, $options) {
