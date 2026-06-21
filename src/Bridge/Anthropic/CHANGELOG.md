@@ -4,6 +4,7 @@ CHANGELOG
 0.11
 ----
 
+ * Add a `baseUrl` argument to `ModelClient` and the factory to target Anthropic-compatible endpoints
  * Raise a `RuntimeException` on unhandled HTTP error statuses before streaming, instead of returning an empty stream
 
 0.10

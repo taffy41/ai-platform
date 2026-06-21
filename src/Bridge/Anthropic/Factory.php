@@ -40,12 +40,13 @@ final class Factory
         ?EventDispatcherInterface $eventDispatcher = null,
         string $cacheRetention = 'short',
         string $name = 'anthropic',
+        string $baseUrl = 'https://api.anthropic.com',
     ): ProviderInterface {
         $httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
 
         return new Provider(
             $name,
-            [new ModelClient($httpClient, $apiKey, $cacheRetention)],
+            [new ModelClient($httpClient, $apiKey, $cacheRetention, $baseUrl)],
             [new ResultConverter()],
             $modelCatalog,
             $contract ?? AnthropicContract::create(),
@@ -66,9 +67,10 @@ final class Factory
         string $cacheRetention = 'short',
         string $name = 'anthropic',
         ?ModelRouterInterface $modelRouter = null,
+        string $baseUrl = 'https://api.anthropic.com',
     ): Platform {
         return new Platform(
-            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $cacheRetention, $name)],
+            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $cacheRetention, $name, $baseUrl)],
             $modelRouter ?? new CatalogBasedModelRouter(),
             $eventDispatcher,
         );
