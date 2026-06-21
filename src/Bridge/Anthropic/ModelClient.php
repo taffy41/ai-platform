@@ -26,6 +26,7 @@ final class ModelClient implements ModelClientInterface
 {
     use JsonBodyEncodingTrait;
     use JsonSchemaSanitizerTrait;
+    use PromptCachingTrait;
 
     private readonly EventSourceHttpClient $httpClient;
     private readonly string $baseUrl;
@@ -68,12 +69,13 @@ final class ModelClient implements ModelClientInterface
             'content-type' => 'application/json',
         ];
 
-        $payload = $this->injectCacheControl($payload);
-        $payload = $this->injectSystemCacheControl($payload);
+        $cacheControl = $this->getCacheControl($this->cacheRetention);
+        $payload = $this->injectMessagesCacheControl($payload, $cacheControl);
+        $payload = $this->injectSystemCacheControl($payload, $cacheControl);
 
         if (isset($options['tools'])) {
             $options['tool_choice'] ??= ['type' => 'auto'];
-            $options['tools'] = $this->injectToolsCacheControl($options['tools']);
+            $options['tools'] = $this->injectToolsCacheControl($options['tools'], $cacheControl);
         }
 
         if (isset($options['thinking'])) {
@@ -100,122 +102,5 @@ final class ModelClient implements ModelClientInterface
             'headers' => $headers,
             'body' => $this->encodeJsonBody(array_merge($options, $payload)),
         ]));
-    }
-
-    /**
-     * Injects a prompt-caching marker on the last tool definition.
-     *
-     * This creates an additional cache breakpoint after all tool definitions,
-     * so the prefix "system → tools" can be cached independently of the
-     * messages that follow.  Tool definitions are typically identical across
-     * requests, making this a very effective caching target.
-     *
-     * @param list<array<string, mixed>> $tools Normalised tool definitions
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function injectToolsCacheControl(array $tools): array
-    {
-        if ('none' === $this->cacheRetention || [] === $tools) {
-            return $tools;
-        }
-
-        $cacheControl = 'long' === $this->cacheRetention
-            ? ['type' => 'ephemeral', 'ttl' => '1h']
-            : ['type' => 'ephemeral'];
-
-        $tools[\count($tools) - 1]['cache_control'] = $cacheControl;
-
-        return $tools;
-    }
-
-    /**
-     * Injects a prompt-caching marker on the last system content block.
-     *
-     * The system prompt is typically the largest and most stable region of a
-     * request, making it the single most effective caching target. This creates
-     * a cache breakpoint after the system block so it can be cached independently
-     * of the tools and messages that follow.
-     *
-     * @param array<string, mixed> $payload
-     *
-     * @return array<string, mixed>
-     */
-    private function injectSystemCacheControl(array $payload): array
-    {
-        if ('none' === $this->cacheRetention || !isset($payload['system']) || !\is_array($payload['system']) || [] === $payload['system']) {
-            return $payload;
-        }
-
-        $payload['system'][\count($payload['system']) - 1]['cache_control'] = $this->getCacheControl();
-
-        return $payload;
-    }
-
-    /**
-     * Injects prompt-caching markers into the normalised message payload.
-     *
-     * Anthropic prompt caching requires a {"cache_control": {"type": "ephemeral"}}
-     * annotation on the last block of the last user message.
-     *
-     * @param array<string, mixed> $payload
-     *
-     * @return array<string, mixed>
-     */
-    private function injectCacheControl(array $payload): array
-    {
-        if ('none' === $this->cacheRetention) {
-            return $payload;
-        }
-
-        $messages = $payload['messages'] ?? [];
-
-        if ([] === $messages) {
-            return $payload;
-        }
-
-        $cacheControl = $this->getCacheControl();
-
-        for ($i = \count($messages) - 1; $i >= 0; --$i) {
-            if ('user' !== ($messages[$i]['role'] ?? '')) {
-                continue;
-            }
-
-            $content = $messages[$i]['content'] ?? null;
-
-            if (\is_string($content)) {
-                $messages[$i]['content'] = [
-                    ['type' => 'text', 'text' => $content, 'cache_control' => $cacheControl],
-                ];
-                break;
-            }
-
-            if (\is_array($content) && [] !== $content) {
-                $lastIdx = \count($content) - 1;
-                if (\is_array($content[$lastIdx])) {
-                    $content[$lastIdx]['cache_control'] = $cacheControl;
-                    $messages[$i]['content'] = $content;
-                }
-                break;
-            }
-        }
-
-        $payload['messages'] = $messages;
-
-        return $payload;
-    }
-
-    /**
-     * Builds the prompt-caching marker matching the configured retention.
-     *
-     * @return array{type: 'ephemeral', ttl?: '1h'}
-     */
-    private function getCacheControl(): array
-    {
-        if ('long' === $this->cacheRetention) {
-            return ['type' => 'ephemeral', 'ttl' => '1h'];
-        }
-
-        return ['type' => 'ephemeral'];
     }
 }

@@ -5,6 +5,7 @@ CHANGELOG
 ----
 
  * Add a `baseUrl` argument to `ModelClient` and the factory to target Anthropic-compatible endpoints
+ * Extract prompt-caching injection into a reusable `PromptCachingTrait` so alternative model clients can share it
  * Raise a `RuntimeException` on unhandled HTTP error statuses before streaming, instead of returning an empty stream
 
 0.10
