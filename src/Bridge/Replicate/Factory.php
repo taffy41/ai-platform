@@ -39,10 +39,11 @@ final class Factory
         ?Contract $contract = null,
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'replicate',
+        string $baseUrl = 'https://api.replicate.com',
     ): ProviderInterface {
         return new Provider(
             $name,
-            [new LlamaModelClient(new Client($httpClient ?? HttpClient::create(), new Clock(), $apiKey))],
+            [new LlamaModelClient(new Client($httpClient ?? HttpClient::create(), new Clock(), $apiKey, $baseUrl))],
             [new LlamaResultConverter()],
             $modelCatalog,
             $contract ?? Contract::create([new LlamaMessageBagNormalizer()]),
@@ -61,9 +62,10 @@ final class Factory
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'replicate',
         ?ModelRouterInterface $modelRouter = null,
+        string $baseUrl = 'https://api.replicate.com',
     ): Platform {
         return new Platform(
-            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name)],
+            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name, $baseUrl)],
             $modelRouter ?? new CatalogBasedModelRouter(),
             $eventDispatcher,
         );

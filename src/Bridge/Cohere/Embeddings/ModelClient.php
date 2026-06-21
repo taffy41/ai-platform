@@ -23,10 +23,17 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final class ModelClient implements ModelClientInterface
 {
+    private readonly string $baseUrl;
+
+    /**
+     * @param string $baseUrl Base URL of a Cohere-compatible endpoint, with or without a trailing slash
+     */
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         #[\SensitiveParameter] private readonly string $apiKey,
+        string $baseUrl = 'https://api.cohere.com',
     ) {
+        $this->baseUrl = rtrim($baseUrl, '/');
     }
 
     public function supports(Model $model): bool
@@ -48,7 +55,7 @@ final class ModelClient implements ModelClientInterface
             $body['embedding_types'] = $options['embedding_types'];
         }
 
-        return new RawHttpResult($this->httpClient->request('POST', 'https://api.cohere.com/v2/embed', [
+        return new RawHttpResult($this->httpClient->request('POST', $this->baseUrl.'/v2/embed', [
             'auth_bearer' => $this->apiKey,
             'headers' => [
                 'Content-Type' => 'application/json',

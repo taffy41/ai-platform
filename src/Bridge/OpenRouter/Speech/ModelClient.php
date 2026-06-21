@@ -23,10 +23,17 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final class ModelClient implements ModelClientInterface
 {
+    private readonly string $baseUrl;
+
+    /**
+     * @param string $baseUrl Base URL of an OpenRouter-compatible endpoint, with or without a trailing slash
+     */
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         #[\SensitiveParameter] private readonly string $apiKey,
+        string $baseUrl = 'https://openrouter.ai/api',
     ) {
+        $this->baseUrl = rtrim($baseUrl, '/');
     }
 
     public function supports(Model $model): bool
@@ -66,7 +73,7 @@ final class ModelClient implements ModelClientInterface
             $body['provider'] = $options['provider'];
         }
 
-        return new RawHttpResult($this->httpClient->request('POST', 'https://openrouter.ai/api/v1/audio/speech', [
+        return new RawHttpResult($this->httpClient->request('POST', $this->baseUrl.'/v1/audio/speech', [
             'auth_bearer' => $this->apiKey,
             'headers' => [
                 'Content-Type' => 'application/json',

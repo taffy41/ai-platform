@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.11
+----
+
+ * Add a `baseUrl` argument to the model clients and the factory to target Voyage-compatible endpoints
+
 0.8
 ---
 

@@ -41,12 +41,13 @@ final class Factory
         ?Contract $contract = null,
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'mistral',
+        string $baseUrl = 'https://api.mistral.ai',
     ): ProviderInterface {
         $httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
 
         return new Provider(
             $name,
-            [new Embeddings\ModelClient($httpClient, $apiKey), new Llm\ModelClient($httpClient, $apiKey), new Ocr\ModelClient($httpClient, $apiKey)],
+            [new Embeddings\ModelClient($httpClient, $apiKey, $baseUrl), new Llm\ModelClient($httpClient, $apiKey, $baseUrl), new Ocr\ModelClient($httpClient, $apiKey)],
             [new Embeddings\ResultConverter(), new Llm\ResultConverter(), new Ocr\ResultConverter()],
             $modelCatalog,
             $contract ?? Contract::create([
@@ -70,9 +71,10 @@ final class Factory
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'mistral',
         ?ModelRouterInterface $modelRouter = null,
+        string $baseUrl = 'https://api.mistral.ai',
     ): Platform {
         return new Platform(
-            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name)],
+            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name, $baseUrl)],
             $modelRouter ?? new CatalogBasedModelRouter(),
             $eventDispatcher,
         );

@@ -24,11 +24,18 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final class CartesiaClient implements ModelClientInterface
 {
+    private readonly string $baseUrl;
+
+    /**
+     * @param string $baseUrl Base URL of a Cartesia-compatible endpoint, with or without a trailing slash
+     */
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         #[\SensitiveParameter] private readonly string $apiKey,
         private readonly string $version,
+        string $baseUrl = 'https://api.cartesia.ai',
     ) {
+        $this->baseUrl = rtrim($baseUrl, '/');
     }
 
     public function supports(Model $model): bool
@@ -53,7 +60,7 @@ final class CartesiaClient implements ModelClientInterface
     {
         $text = \is_string($payload) ? $payload : ($payload['text'] ?? throw new RuntimeException('The payload must contain a "text" key.'));
 
-        return new RawHttpResult($this->httpClient->request('POST', 'https://api.cartesia.ai/tts/bytes', [
+        return new RawHttpResult($this->httpClient->request('POST', $this->baseUrl.'/tts/bytes', [
             'auth_bearer' => $this->apiKey,
             'headers' => [
                 'Cartesia-Version' => $this->version,
@@ -77,7 +84,7 @@ final class CartesiaClient implements ModelClientInterface
      */
     private function doSpeechToText(Model $model, array|string $payload, array $options): RawHttpResult
     {
-        return new RawHttpResult($this->httpClient->request('POST', 'https://api.cartesia.ai/stt', [
+        return new RawHttpResult($this->httpClient->request('POST', $this->baseUrl.'/stt', [
             'auth_bearer' => $this->apiKey,
             'headers' => [
                 'Cartesia-Version' => $this->version,

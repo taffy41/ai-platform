@@ -37,6 +37,18 @@ final class ModelClientTest extends TestCase
         $client->request(new Mistral('mistral-large-latest'), ['messages' => [['role' => 'user', 'content' => 'Hello']]]);
     }
 
+    public function testCustomBaseUrlIsUsedAndTrailingSlashNormalized()
+    {
+        $httpClient = new MockHttpClient([function (string $method, string $url): MockResponse {
+            $this->assertSame('https://mistral.example.com/v1/chat/completions', $url);
+
+            return new MockResponse();
+        }]);
+
+        $client = new ModelClient($httpClient, 'test-api-key', 'https://mistral.example.com/');
+        $client->request(new Mistral('mistral-large-latest'), ['messages' => [['role' => 'user', 'content' => 'Hello']]]);
+    }
+
     public function testMalformedUtf8InPayloadDoesNotAbortTheRequest()
     {
         $httpClient = new MockHttpClient([function (string $method, string $url, array $options): MockResponse {

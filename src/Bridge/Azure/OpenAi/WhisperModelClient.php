@@ -11,6 +11,7 @@
 
 namespace Symfony\AI\Platform\Bridge\Azure\OpenAi;
 
+use Symfony\AI\Platform\Bridge\Azure\BaseUrlNormalizerTrait;
 use Symfony\AI\Platform\Bridge\OpenAi\Whisper;
 use Symfony\AI\Platform\Bridge\OpenAi\Whisper\Task;
 use Symfony\AI\Platform\Exception\InvalidArgumentException;
@@ -25,22 +26,24 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final class WhisperModelClient implements ModelClientInterface
 {
-    private readonly EventSourceHttpClient $httpClient;
+    use BaseUrlNormalizerTrait;
 
+    private readonly EventSourceHttpClient $httpClient;
+    private readonly string $baseUrl;
+
+    /**
+     * @param string $baseUrl Base URL of the Azure resource; accepts a bare host (https assumed) or a
+     *                        full URL with scheme, with or without a trailing slash
+     */
     public function __construct(
         HttpClientInterface $httpClient,
-        private readonly string $baseUrl,
+        string $baseUrl,
         private readonly string $deployment,
         private readonly string $apiVersion,
         #[\SensitiveParameter] private readonly string $apiKey,
     ) {
         $this->httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
-        if (str_starts_with($this->baseUrl, 'http://')) {
-            throw new InvalidArgumentException('The base URL must not contain the protocol.');
-        }
-        if (str_starts_with($this->baseUrl, 'https://')) {
-            throw new InvalidArgumentException('The base URL must not contain the protocol.');
-        }
+        $this->baseUrl = $this->normalizeBaseUrl($baseUrl);
         if ('' === $deployment) {
             throw new InvalidArgumentException('The deployment must not be empty.');
         }
@@ -65,7 +68,7 @@ final class WhisperModelClient implements ModelClientInterface
 
         $task = $options['task'] ?? Task::TRANSCRIPTION;
         $endpoint = Task::TRANSCRIPTION === $task ? 'transcriptions' : 'translations';
-        $url = \sprintf('https://%s/openai/deployments/%s/audio/%s', $this->baseUrl, $this->deployment, $endpoint);
+        $url = \sprintf('%s/openai/deployments/%s/audio/%s', $this->baseUrl, $this->deployment, $endpoint);
 
         unset($options['task']);
 

@@ -31,7 +31,7 @@ class Factory
      * @param non-empty-string $name
      */
     public static function createProvider(
-        string $hostUrl = 'http://localhost:12434',
+        string $baseUrl = 'http://localhost:12434',
         ?HttpClientInterface $httpClient = null,
         ModelCatalogInterface $modelCatalog = new ModelCatalog(),
         ?Contract $contract = null,
@@ -43,8 +43,8 @@ class Factory
         return new Provider(
             $name,
             [
-                new Completions\ModelClient($httpClient, $hostUrl),
-                new Embeddings\ModelClient($httpClient, $hostUrl),
+                new Completions\ModelClient($httpClient, $baseUrl),
+                new Embeddings\ModelClient($httpClient, $baseUrl),
             ],
             [
                 new Embeddings\ResultConverter(),
@@ -60,7 +60,7 @@ class Factory
      * @param non-empty-string $name
      */
     public static function createPlatform(
-        string $hostUrl = 'http://localhost:12434',
+        string $baseUrl = 'http://localhost:12434',
         ?HttpClientInterface $httpClient = null,
         ModelCatalogInterface $modelCatalog = new ModelCatalog(),
         ?Contract $contract = null,
@@ -69,7 +69,7 @@ class Factory
         ?ModelRouterInterface $modelRouter = null,
     ): Platform {
         return new Platform(
-            [self::createProvider($hostUrl, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name)],
+            [self::createProvider($baseUrl, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name)],
             $modelRouter ?? new CatalogBasedModelRouter(),
             $eventDispatcher,
         );

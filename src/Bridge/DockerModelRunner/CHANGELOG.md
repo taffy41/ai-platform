@@ -5,6 +5,8 @@ CHANGELOG
 ----
 
  * Throw `ServerException` on server errors (HTTP 5xx) instead of a generic `RuntimeException`
+ * Normalize the base URL and tolerate a trailing slash
+ * [BC BREAK] Rename the `$hostUrl` constructor and factory argument to `$baseUrl`
  * Raise a `RuntimeException` on unhandled HTTP error statuses before streaming, instead of returning an empty stream
 
 0.10

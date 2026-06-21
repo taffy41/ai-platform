@@ -30,14 +30,19 @@ class ModelClient implements ModelClientInterface
     use JsonBodyEncodingTrait;
 
     private readonly EventSourceHttpClient $httpClient;
+    private readonly string $baseUrl;
 
+    /**
+     * @param string $baseUrl Base URL of an Open Responses-compatible endpoint, with or without a trailing slash
+     */
     public function __construct(
         HttpClientInterface $httpClient,
-        private readonly string $baseUrl,
+        string $baseUrl,
         #[\SensitiveParameter] private readonly ?string $apiKey = null,
         private readonly string $path = '/v1/responses',
     ) {
         $this->httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
+        $this->baseUrl = rtrim($baseUrl, '/');
     }
 
     public function supports(Model $model): bool

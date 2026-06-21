@@ -11,6 +11,7 @@
 
 namespace Symfony\AI\Platform\Bridge\Azure\Responses;
 
+use Symfony\AI\Platform\Bridge\Azure\BaseUrlNormalizerTrait;
 use Symfony\AI\Platform\Bridge\OpenResponses\ResponsesModel;
 use Symfony\AI\Platform\Exception\InvalidArgumentException;
 use Symfony\AI\Platform\JsonBodyEncodingTrait;
@@ -26,11 +27,16 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final class ModelClient implements ModelClientInterface
 {
+    use BaseUrlNormalizerTrait;
     use JsonBodyEncodingTrait;
 
     private readonly EventSourceHttpClient $httpClient;
     private readonly string $endpoint;
 
+    /**
+     * @param string $baseUrl Base URL of the Azure resource; accepts a bare host (https assumed) or a
+     *                        full URL with scheme, with or without a trailing slash
+     */
     public function __construct(
         HttpClientInterface $httpClient,
         string $baseUrl,
@@ -40,15 +46,12 @@ final class ModelClient implements ModelClientInterface
         if ('' === $baseUrl) {
             throw new InvalidArgumentException('The base URL must not be empty.');
         }
-        if (str_starts_with($baseUrl, 'http://') || str_starts_with($baseUrl, 'https://')) {
-            throw new InvalidArgumentException('The base URL must not contain the protocol.');
-        }
         if ('' === $apiKey) {
             throw new InvalidArgumentException('The API key must not be empty.');
         }
 
         $this->httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
-        $this->endpoint = \sprintf('https://%s/openai/v1/responses', rtrim($baseUrl, '/'));
+        $this->endpoint = $this->normalizeBaseUrl($baseUrl).'/openai/v1/responses';
     }
 
     public function supports(Model $model): bool

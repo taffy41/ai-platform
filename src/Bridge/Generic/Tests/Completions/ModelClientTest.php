@@ -114,6 +114,8 @@ final class ModelClientTest extends TestCase
 
     #[TestWith(['https://api.inference.eu', 'https://api.inference.eu/v1/chat/completions'])]
     #[TestWith(['https://api.inference.com', 'https://api.inference.com/v1/chat/completions'])]
+    #[TestWith(['https://api.inference.com/', 'https://api.inference.com/v1/chat/completions'])]
+    #[TestWith(['https://api.inference.com///', 'https://api.inference.com/v1/chat/completions'])]
     public function testItUsesCorrectBaseUrl(string $baseUrl, string $expectedUrl)
     {
         $resultCallback = static function (string $method, string $url, array $options) use ($expectedUrl): HttpResponse {

@@ -67,6 +67,21 @@ final class ModelClientTest extends TestCase
         ]);
     }
 
+    public function testCustomBaseUrlIsUsedAndTrailingSlashNormalized()
+    {
+        $httpClient = new MockHttpClient(function (string $method, string $url): MockResponse {
+            $this->assertSame('https://openrouter.example.com/v1/rerank', $url);
+
+            return new MockResponse();
+        });
+
+        $client = new ModelClient($httpClient, 'test-key', 'https://openrouter.example.com/');
+        $client->request(new RerankModel('cohere/rerank-v3.5'), [
+            'query' => 'What is AI?',
+            'texts' => ['Document about AI'],
+        ]);
+    }
+
     public function testItSendsTopNOption()
     {
         $httpClient = new MockHttpClient(function (

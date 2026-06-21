@@ -106,6 +106,18 @@ final class ModelClientTest extends TestCase
         $modelClient->request(new Scaleway('deepseek-r1-distill-llama-70b'), ['messages' => []], []);
     }
 
+    public function testCustomBaseUrlIsUsedAndTrailingSlashNormalized()
+    {
+        $resultCallback = function (string $method, string $url): HttpResponse {
+            $this->assertSame('https://x.example.com/v1/chat/completions', $url);
+
+            return new MockResponse();
+        };
+        $httpClient = new MockHttpClient([$resultCallback]);
+        $modelClient = new ModelClient($httpClient, 'scaleway-api-key', 'https://x.example.com/');
+        $modelClient->request(new Scaleway('deepseek-r1-distill-llama-70b'), ['messages' => []]);
+    }
+
     public function testMalformedUtf8InPayloadDoesNotAbortTheRequest()
     {
         $resultCallback = static function (string $method, string $url, array $options): HttpResponse {

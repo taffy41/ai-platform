@@ -29,16 +29,20 @@ final class ModelClientTest extends TestCase
         new ModelClient(new MockHttpClient(), '', 'api-key');
     }
 
-    #[TestWith(['http://test.openai.azure.com', 'The base URL must not contain the protocol.'])]
-    #[TestWith(['https://test.openai.azure.com', 'The base URL must not contain the protocol.'])]
-    #[TestWith(['http://test.openai.azure.com/openai', 'The base URL must not contain the protocol.'])]
-    #[TestWith(['https://test.openai.azure.com:443', 'The base URL must not contain the protocol.'])]
-    public function testItThrowsExceptionWhenBaseUrlContainsProtocol(string $invalidUrl, string $expectedMessage)
+    #[TestWith(['test.openai.azure.com', 'https://test.openai.azure.com/openai/v1/responses'])]
+    #[TestWith(['https://test.openai.azure.com', 'https://test.openai.azure.com/openai/v1/responses'])]
+    #[TestWith(['https://test.openai.azure.com/', 'https://test.openai.azure.com/openai/v1/responses'])]
+    #[TestWith(['http://localhost:8080', 'http://localhost:8080/openai/v1/responses'])]
+    public function testItNormalizesTheBaseUrl(string $baseUrl, string $expectedUrl)
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage($expectedMessage);
+        $httpClient = new MockHttpClient([function (string $method, string $url) use ($expectedUrl): MockResponse {
+            $this->assertSame($expectedUrl, $url);
 
-        new ModelClient(new MockHttpClient(), $invalidUrl, 'api-key');
+            return new MockResponse();
+        }]);
+
+        $client = new ModelClient($httpClient, $baseUrl, 'test-api-key', 'gpt-4o');
+        $client->request(new ResponsesModel('gpt-4o'), ['input' => [['role' => 'user', 'content' => 'Hello']]]);
     }
 
     public function testItThrowsExceptionWhenApiKeyIsEmpty()

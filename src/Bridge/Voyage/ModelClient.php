@@ -22,10 +22,17 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final class ModelClient implements ModelClientInterface
 {
+    private readonly string $baseUrl;
+
+    /**
+     * @param string $baseUrl Base URL of a Voyage-compatible endpoint, with or without a trailing slash
+     */
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         #[\SensitiveParameter] private readonly string $apiKey,
+        string $baseUrl = 'https://api.voyageai.com',
     ) {
+        $this->baseUrl = rtrim($baseUrl, '/');
     }
 
     public function supports(Model $model): bool
@@ -56,6 +63,6 @@ final class ModelClient implements ModelClientInterface
             $body['json']['encoding_format'] = $options['encoding'] ?? null;
         }
 
-        return new RawHttpResult($this->httpClient->request('POST', \sprintf('https://api.voyageai.com/v1/%s', $endpoint), $body));
+        return new RawHttpResult($this->httpClient->request('POST', \sprintf('%s/v1/%s', $this->baseUrl, $endpoint), $body));
     }
 }

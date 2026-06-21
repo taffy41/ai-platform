@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.11
+----
+
+ * Accept a full base URL with scheme (a bare host still defaults to `https`) and tolerate a trailing slash, instead of rejecting any base URL that contains a protocol
+
 0.10
 ----
 

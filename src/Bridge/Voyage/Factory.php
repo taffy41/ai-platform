@@ -38,12 +38,13 @@ final class Factory
         ?Contract $contract = null,
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'voyage',
+        string $baseUrl = 'https://api.voyageai.com',
     ): ProviderInterface {
         $httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
 
         return new Provider(
             $name,
-            [new ModelClient($httpClient, $apiKey)],
+            [new ModelClient($httpClient, $apiKey, $baseUrl)],
             [new ResultConverter()],
             $modelCatalog,
             $contract ?? VoyageContract::create(),
@@ -62,9 +63,10 @@ final class Factory
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'voyage',
         ?ModelRouterInterface $modelRouter = null,
+        string $baseUrl = 'https://api.voyageai.com',
     ): Platform {
         return new Platform(
-            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name)],
+            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name, $baseUrl)],
             $modelRouter ?? new CatalogBasedModelRouter(),
             $eventDispatcher,
         );

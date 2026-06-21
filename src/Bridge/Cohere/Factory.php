@@ -37,12 +37,13 @@ final class Factory
         ?Contract $contract = null,
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'cohere',
+        string $baseUrl = 'https://api.cohere.com',
     ): ProviderInterface {
         $httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
 
         return new Provider(
             $name,
-            [new Embeddings\ModelClient($httpClient, $apiKey), new Reranker\ModelClient($httpClient, $apiKey), new Llm\ModelClient($httpClient, $apiKey), new SpeechToText\ModelClient($httpClient, $apiKey)],
+            [new Embeddings\ModelClient($httpClient, $apiKey, $baseUrl), new Reranker\ModelClient($httpClient, $apiKey, $baseUrl), new Llm\ModelClient($httpClient, $apiKey, $baseUrl), new SpeechToText\ModelClient($httpClient, $apiKey, $baseUrl)],
             [new Embeddings\ResultConverter(), new Reranker\ResultConverter(), new Llm\ResultConverter(), new SpeechToText\ResultConverter()],
             $modelCatalog,
             $contract ?? Contract::create([new SpeechToText\AudioNormalizer()]),
@@ -61,9 +62,10 @@ final class Factory
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'cohere',
         ?ModelRouterInterface $modelRouter = null,
+        string $baseUrl = 'https://api.cohere.com',
     ): Platform {
         return new Platform(
-            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name)],
+            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name, $baseUrl)],
             $modelRouter ?? new CatalogBasedModelRouter(),
             $eventDispatcher,
         );

@@ -22,16 +22,20 @@ use Symfony\Component\HttpClient\Response\MockResponse;
 
 final class WhisperModelClientTest extends TestCase
 {
-    #[TestWith(['http://test.azure.com', 'The base URL must not contain the protocol.'])]
-    #[TestWith(['https://test.azure.com', 'The base URL must not contain the protocol.'])]
-    #[TestWith(['http://test.azure.com:8080', 'The base URL must not contain the protocol.'])]
-    #[TestWith(['https://test.azure.com:443', 'The base URL must not contain the protocol.'])]
-    public function testItThrowsExceptionWhenBaseUrlContainsProtocol(string $invalidUrl, string $expectedMessage)
+    #[TestWith(['test.azure.com', 'https://test.azure.com/openai/deployments/whspr/audio/transcriptions?api-version=2023-12'])]
+    #[TestWith(['https://test.azure.com', 'https://test.azure.com/openai/deployments/whspr/audio/transcriptions?api-version=2023-12'])]
+    #[TestWith(['https://test.azure.com/', 'https://test.azure.com/openai/deployments/whspr/audio/transcriptions?api-version=2023-12'])]
+    #[TestWith(['http://localhost:8080', 'http://localhost:8080/openai/deployments/whspr/audio/transcriptions?api-version=2023-12'])]
+    public function testItNormalizesTheBaseUrl(string $baseUrl, string $expectedUrl)
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage($expectedMessage);
+        $httpClient = new MockHttpClient([function (string $method, string $url) use ($expectedUrl): MockResponse {
+            $this->assertSame($expectedUrl, $url);
 
-        new WhisperModelClient(new MockHttpClient(), $invalidUrl, 'deployment', 'api-version', 'api-key');
+            return new MockResponse('{"text": "Hello World"}');
+        }]);
+
+        $client = new WhisperModelClient($httpClient, $baseUrl, 'whspr', '2023-12', 'test-key');
+        $client->request(new Whisper('whisper-1'), ['file' => 'audio-data']);
     }
 
     public function testItThrowsExceptionWhenDeploymentIsEmpty()

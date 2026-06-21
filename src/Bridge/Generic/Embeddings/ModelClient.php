@@ -25,12 +25,18 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 class ModelClient implements ModelClientInterface
 {
+    private readonly string $baseUrl;
+
+    /**
+     * @param string $baseUrl Base URL of an OpenAI-compatible endpoint, with or without a trailing slash
+     */
     public function __construct(
         private readonly ?HttpClientInterface $httpClient,
-        private readonly string $baseUrl,
+        string $baseUrl,
         #[\SensitiveParameter] private readonly ?string $apiKey = null,
         private readonly string $path = '/v1/embeddings',
     ) {
+        $this->baseUrl = rtrim($baseUrl, '/');
     }
 
     public function supports(Model $model): bool

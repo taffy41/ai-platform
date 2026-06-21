@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+0.11
+----
+
+ * Normalize the base URL and tolerate a trailing slash
+ * [BC BREAK] Rename the `$hostUrl` constructor and factory argument to `$baseUrl`
+
 0.8
 ---
 

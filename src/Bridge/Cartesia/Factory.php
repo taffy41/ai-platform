@@ -39,12 +39,13 @@ final class Factory
         ?Contract $contract = null,
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'cartesia',
+        string $baseUrl = 'https://api.cartesia.ai',
     ): ProviderInterface {
         $httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
 
         return new Provider(
             $name,
-            [new CartesiaClient($httpClient, $apiKey, $version)],
+            [new CartesiaClient($httpClient, $apiKey, $version, $baseUrl)],
             [new CartesiaResultConverter()],
             $modelCatalog,
             $contract ?? CartesiaContract::create(),
@@ -64,9 +65,10 @@ final class Factory
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'cartesia',
         ?ModelRouterInterface $modelRouter = null,
+        string $baseUrl = 'https://api.cartesia.ai',
     ): Platform {
         return new Platform(
-            [self::createProvider($apiKey, $version, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name)],
+            [self::createProvider($apiKey, $version, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name, $baseUrl)],
             $modelRouter ?? new CatalogBasedModelRouter(),
             $eventDispatcher,
         );

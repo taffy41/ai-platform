@@ -11,6 +11,7 @@
 
 namespace Symfony\AI\Platform\Bridge\Azure\Meta;
 
+use Symfony\AI\Platform\Bridge\Azure\BaseUrlNormalizerTrait;
 use Symfony\AI\Platform\Bridge\Meta\Llama;
 use Symfony\AI\Platform\Exception\InvalidArgumentException;
 use Symfony\AI\Platform\JsonBodyEncodingTrait;
@@ -24,13 +25,21 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final class LlamaModelClient implements ModelClientInterface
 {
+    use BaseUrlNormalizerTrait;
     use JsonBodyEncodingTrait;
 
+    private readonly string $baseUrl;
+
+    /**
+     * @param string $baseUrl Base URL of the Azure resource; accepts a bare host (https assumed) or a
+     *                        full URL with scheme, with or without a trailing slash
+     */
     public function __construct(
         private readonly HttpClientInterface $httpClient,
-        private readonly string $baseUrl,
+        string $baseUrl,
         #[\SensitiveParameter] private readonly string $apiKey,
     ) {
+        $this->baseUrl = $this->normalizeBaseUrl($baseUrl);
     }
 
     public function supports(Model $model): bool
@@ -44,7 +53,7 @@ final class LlamaModelClient implements ModelClientInterface
             throw new InvalidArgumentException(\sprintf('Payload must be an array, but a string was given to "%s".', self::class));
         }
 
-        $url = \sprintf('https://%s/chat/completions', $this->baseUrl);
+        $url = $this->baseUrl.'/chat/completions';
 
         return new RawHttpResult($this->httpClient->request('POST', $url, [
             'headers' => [

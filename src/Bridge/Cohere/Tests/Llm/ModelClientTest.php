@@ -54,6 +54,18 @@ final class ModelClientTest extends TestCase
         $client->request(new Cohere('command-a-03-2025'), ['model' => 'command-a-03-2025', 'messages' => []]);
     }
 
+    public function testCustomBaseUrlIsUsedAndTrailingSlashNormalized()
+    {
+        $httpClient = new MockHttpClient([function (string $method, string $url): MockResponse {
+            $this->assertSame('https://x.example.com/v2/chat', $url);
+
+            return new MockResponse();
+        }]);
+
+        $client = new ModelClient($httpClient, 'test-key', 'https://x.example.com/');
+        $client->request(new Cohere('command-a-03-2025'), ['model' => 'command-a-03-2025', 'messages' => []]);
+    }
+
     public function testStringPayloadThrowsException()
     {
         $client = new ModelClient(new MockHttpClient(), 'test-key');

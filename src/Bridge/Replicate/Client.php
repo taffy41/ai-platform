@@ -24,11 +24,18 @@ final class Client
 {
     use JsonBodyEncodingTrait;
 
+    private readonly string $baseUrl;
+
+    /**
+     * @param string $baseUrl Base URL of a Replicate-compatible endpoint, with or without a trailing slash
+     */
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly ClockInterface $clock,
         #[\SensitiveParameter] private readonly string $apiKey,
+        string $baseUrl = 'https://api.replicate.com',
     ) {
+        $this->baseUrl = rtrim($baseUrl, '/');
     }
 
     /**
@@ -37,7 +44,7 @@ final class Client
      */
     public function request(string $model, string $endpoint, array $body): ResponseInterface
     {
-        $url = \sprintf('https://api.replicate.com/v1/models/%s/%s', $model, $endpoint);
+        $url = \sprintf('%s/v1/models/%s/%s', $this->baseUrl, $model, $endpoint);
 
         $response = $this->httpClient->request('POST', $url, [
             'headers' => ['Content-Type' => 'application/json'],
@@ -66,7 +73,7 @@ final class Client
 
     private function getResponse(string $id): ResponseInterface
     {
-        $url = \sprintf('https://api.replicate.com/v1/predictions/%s', $id);
+        $url = \sprintf('%s/v1/predictions/%s', $this->baseUrl, $id);
 
         return $this->httpClient->request('GET', $url, [
             'headers' => ['Content-Type' => 'application/json'],

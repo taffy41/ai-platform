@@ -28,12 +28,17 @@ final class ModelClient implements ModelClientInterface
     use JsonBodyEncodingTrait;
 
     private readonly EventSourceHttpClient $httpClient;
+    private readonly string $baseUrl;
 
+    /**
+     * @param string $baseUrl Base URL of the Docker Model Runner instance, with or without a trailing slash
+     */
     public function __construct(
         HttpClientInterface $httpClient,
-        private readonly string $hostUrl,
+        string $baseUrl,
     ) {
         $this->httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
+        $this->baseUrl = rtrim($baseUrl, '/');
     }
 
     public function supports(Model $model): bool
@@ -47,7 +52,7 @@ final class ModelClient implements ModelClientInterface
             throw new InvalidArgumentException(\sprintf('Payload must be an array, but a string was given to "%s".', self::class));
         }
 
-        return new RawHttpResult($this->httpClient->request('POST', \sprintf('%s/engines/v1/chat/completions', $this->hostUrl), [
+        return new RawHttpResult($this->httpClient->request('POST', \sprintf('%s/engines/v1/chat/completions', $this->baseUrl), [
             'headers' => ['Content-Type' => 'application/json'],
             'body' => $this->encodeJsonBody(array_merge($options, $payload)),
         ]));

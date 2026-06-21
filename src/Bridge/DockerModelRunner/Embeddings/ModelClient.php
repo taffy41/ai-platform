@@ -22,10 +22,16 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final class ModelClient implements ModelClientInterface
 {
+    private readonly string $baseUrl;
+
+    /**
+     * @param string $baseUrl Base URL of the Docker Model Runner instance, with or without a trailing slash
+     */
     public function __construct(
         private readonly HttpClientInterface $httpClient,
-        private readonly string $hostUrl,
+        string $baseUrl,
     ) {
+        $this->baseUrl = rtrim($baseUrl, '/');
     }
 
     public function supports(Model $model): bool
@@ -35,7 +41,7 @@ final class ModelClient implements ModelClientInterface
 
     public function request(Model $model, array|string $payload, array $options = []): RawHttpResult
     {
-        return new RawHttpResult($this->httpClient->request('POST', \sprintf('%s/engines/v1/embeddings', $this->hostUrl), [
+        return new RawHttpResult($this->httpClient->request('POST', \sprintf('%s/engines/v1/embeddings', $this->baseUrl), [
             'json' => array_merge($options, [
                 'model' => $model->getName(),
                 'input' => $payload,

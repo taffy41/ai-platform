@@ -33,7 +33,7 @@ final class Factory
      */
     public static function createProvider(
         #[\SensitiveParameter] string $apiKey,
-        ?string $hostUrl = 'https://api.decart.ai/v1',
+        ?string $baseUrl = 'https://api.decart.ai/v1',
         ?HttpClientInterface $httpClient = null,
         ModelCatalogInterface $modelCatalog = new ModelCatalog(),
         ?Contract $contract = null,
@@ -44,7 +44,7 @@ final class Factory
 
         return new Provider(
             $name,
-            [new DecartClient($httpClient, $apiKey, $hostUrl)],
+            [new DecartClient($httpClient, $apiKey, $baseUrl)],
             [new DecartResultConverter()],
             $modelCatalog,
             $contract ?? DecartContract::create(),
@@ -57,7 +57,7 @@ final class Factory
      */
     public static function createPlatform(
         #[\SensitiveParameter] string $apiKey,
-        ?string $hostUrl = 'https://api.decart.ai/v1',
+        ?string $baseUrl = 'https://api.decart.ai/v1',
         ?HttpClientInterface $httpClient = null,
         ModelCatalogInterface $modelCatalog = new ModelCatalog(),
         ?Contract $contract = null,
@@ -66,7 +66,7 @@ final class Factory
         ?ModelRouterInterface $modelRouter = null,
     ): Platform {
         return new Platform(
-            [self::createProvider($apiKey, $hostUrl, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name)],
+            [self::createProvider($apiKey, $baseUrl, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name)],
             $modelRouter ?? new CatalogBasedModelRouter(),
             $eventDispatcher,
         );

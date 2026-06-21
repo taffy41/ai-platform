@@ -24,16 +24,20 @@ use Symfony\Component\HttpClient\Response\MockResponse;
  */
 final class EmbeddingsModelClientTest extends TestCase
 {
-    #[TestWith(['http://test.azure.com', 'The base URL must not contain the protocol.'])]
-    #[TestWith(['https://test.azure.com', 'The base URL must not contain the protocol.'])]
-    #[TestWith(['http://test.azure.com/path', 'The base URL must not contain the protocol.'])]
-    #[TestWith(['https://test.azure.com:443', 'The base URL must not contain the protocol.'])]
-    public function testItThrowsExceptionWhenBaseUrlContainsProtocol(string $invalidUrl, string $expectedMessage)
+    #[TestWith(['test.azure.com', 'https://test.azure.com/openai/deployments/embeddings-deployment/embeddings?api-version=2023-12-01'])]
+    #[TestWith(['https://test.azure.com', 'https://test.azure.com/openai/deployments/embeddings-deployment/embeddings?api-version=2023-12-01'])]
+    #[TestWith(['https://test.azure.com/', 'https://test.azure.com/openai/deployments/embeddings-deployment/embeddings?api-version=2023-12-01'])]
+    #[TestWith(['http://localhost:8080', 'http://localhost:8080/openai/deployments/embeddings-deployment/embeddings?api-version=2023-12-01'])]
+    public function testItNormalizesTheBaseUrl(string $baseUrl, string $expectedUrl)
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage($expectedMessage);
+        $resultCallback = function (string $method, string $url) use ($expectedUrl): MockResponse {
+            $this->assertSame($expectedUrl, $url);
 
-        new EmbeddingsModelClient(new MockHttpClient(), $invalidUrl, 'deployment', 'api-version', 'api-key');
+            return new MockResponse();
+        };
+
+        $client = new EmbeddingsModelClient(new MockHttpClient([$resultCallback]), $baseUrl, 'embeddings-deployment', '2023-12-01', 'test-api-key');
+        $client->request(new EmbeddingsModel('text-embedding-3-small'), 'Hello, world!');
     }
 
     public function testItThrowsExceptionWhenDeploymentIsEmpty()

@@ -5,6 +5,7 @@ CHANGELOG
 ----
 
  * Throw `ServerException` on server errors (HTTP 5xx) instead of a generic `RuntimeException`
+ * Add a `baseUrl` argument to the factory to target OpenRouter-compatible endpoints
 
 0.10
 ----

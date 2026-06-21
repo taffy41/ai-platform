@@ -44,15 +44,16 @@ final class Factory
         ?Contract $contract = null,
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'scaleway',
+        string $baseUrl = 'https://api.scaleway.ai',
     ): ProviderInterface {
         $httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
 
         return new Provider(
             $name,
             [
-                new OpenResponsesModelClient($httpClient, 'https://api.scaleway.ai', $apiKey),
-                new ScalewayModelClient($httpClient, $apiKey),
-                new ScalewayEmbeddingsModelClient($httpClient, $apiKey),
+                new OpenResponsesModelClient($httpClient, $baseUrl, $apiKey),
+                new ScalewayModelClient($httpClient, $apiKey, $baseUrl),
+                new ScalewayEmbeddingsModelClient($httpClient, $apiKey, $baseUrl),
             ],
             [
                 new OpenResponsesResultConverter(),
@@ -76,9 +77,10 @@ final class Factory
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'scaleway',
         ?ModelRouterInterface $modelRouter = null,
+        string $baseUrl = 'https://api.scaleway.ai',
     ): Platform {
         return new Platform(
-            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name)],
+            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name, $baseUrl)],
             $modelRouter ?? new CatalogBasedModelRouter(),
             $eventDispatcher,
         );

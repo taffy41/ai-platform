@@ -44,6 +44,18 @@ final class ModelClientTest extends TestCase
         $client->request(new Gemini('gemini-1.5-flash'), $payload);
     }
 
+    public function testCustomBaseUrlIsUsedAndTrailingSlashNormalized()
+    {
+        $httpClient = new MockHttpClient(function (string $method, string $url): JsonMockResponse {
+            $this->assertSame('https://gemini.example.com/v1beta/models/gemini-1.5-flash:generateContent', $url);
+
+            return new JsonMockResponse(['candidates' => []]);
+        });
+
+        $client = new ModelClient($httpClient, 'test-api-key', 'https://gemini.example.com/');
+        $client->request(new Gemini('gemini-1.5-flash'), ['contents' => []]);
+    }
+
     public function testRequestWithOptions()
     {
         $payload = ['contents' => []];

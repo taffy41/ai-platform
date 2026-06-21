@@ -24,11 +24,17 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final class DecartClient implements ModelClientInterface
 {
+    private readonly string $baseUrl;
+
+    /**
+     * @param string $baseUrl Base URL of a Decart-compatible endpoint, with or without a trailing slash
+     */
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         #[\SensitiveParameter] private readonly string $apiKey,
-        private readonly string $hostUrl = 'https://api.decart.ai/v1',
+        string $baseUrl = 'https://api.decart.ai/v1',
     ) {
+        $this->baseUrl = rtrim($baseUrl, '/');
     }
 
     public function supports(Model $model): bool
@@ -54,7 +60,7 @@ final class DecartClient implements ModelClientInterface
      */
     private function generate(Model $model, array|string $payload, array $options = []): RawResultInterface
     {
-        return new RawHttpResult($this->httpClient->request('POST', \sprintf('%s/generate/%s', $this->hostUrl, $model->getName()), [
+        return new RawHttpResult($this->httpClient->request('POST', \sprintf('%s/generate/%s', $this->baseUrl, $model->getName()), [
             'headers' => [
                 'x-api-key' => $this->apiKey,
             ],
@@ -71,7 +77,7 @@ final class DecartClient implements ModelClientInterface
      */
     private function edit(Model $model, array|string $payload, array $options): RawResultInterface
     {
-        return new RawHttpResult($this->httpClient->request('POST', \sprintf('%s/generate/%s', $this->hostUrl, $model->getName()), [
+        return new RawHttpResult($this->httpClient->request('POST', \sprintf('%s/generate/%s', $this->baseUrl, $model->getName()), [
             'headers' => [
                 'x-api-key' => $this->apiKey,
             ],

@@ -42,12 +42,13 @@ final class Factory
         ?Contract $contract = null,
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'gemini',
+        string $baseUrl = 'https://generativelanguage.googleapis.com',
     ): ProviderInterface {
         $httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
 
         return new Provider(
             $name,
-            [new EmbeddingsModelClient($httpClient, $apiKey), new GeminiModelClient($httpClient, $apiKey)],
+            [new EmbeddingsModelClient($httpClient, $apiKey, $baseUrl), new GeminiModelClient($httpClient, $apiKey, $baseUrl)],
             [new EmbeddingsResultConverter(), new GeminiResultConverter()],
             $modelCatalog,
             $contract ?? GeminiContract::create(),
@@ -66,9 +67,10 @@ final class Factory
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'gemini',
         ?ModelRouterInterface $modelRouter = null,
+        string $baseUrl = 'https://generativelanguage.googleapis.com',
     ): Platform {
         return new Platform(
-            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name)],
+            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name, $baseUrl)],
             $modelRouter ?? new CatalogBasedModelRouter(),
             $eventDispatcher,
         );

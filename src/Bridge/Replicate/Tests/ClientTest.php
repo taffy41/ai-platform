@@ -51,6 +51,18 @@ final class ClientTest extends TestCase
         $this->assertSame(['World'], $data['output']);
     }
 
+    public function testCustomBaseUrlIsUsedAndTrailingSlashNormalized()
+    {
+        $httpClient = new MockHttpClient(function (string $method, string $url): MockResponse {
+            $this->assertSame('https://replicate.example.com/v1/models/meta/llama-3.1-405b-instruct/predictions', $url);
+
+            return new MockResponse('{"status": "succeeded"}');
+        });
+
+        $client = new Client($httpClient, new MockClock(), 'test-api-key', 'https://replicate.example.com/');
+        $client->request('meta/llama-3.1-405b-instruct', 'predictions', ['prompt' => 'Hello']);
+    }
+
     public function testRequestAuthenticationHeader()
     {
         $httpClient = new MockHttpClient(static function (string $method, string $url, array $options) {

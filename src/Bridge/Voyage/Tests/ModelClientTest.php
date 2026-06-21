@@ -47,6 +47,18 @@ final class ModelClientTest extends TestCase
         ]);
     }
 
+    public function testCustomBaseUrlIsUsedAndTrailingSlashNormalized()
+    {
+        $httpClient = new MockHttpClient([function (string $method, string $url): MockResponse {
+            $this->assertSame('https://x.example.com/v1/embeddings', $url);
+
+            return new MockResponse();
+        }]);
+
+        $client = new ModelClient($httpClient, 'test-api-key', 'https://x.example.com/');
+        $client->request(new Voyage('some-text-embedding-model', []), 'Hello, world!');
+    }
+
     public static function requestProvider(): \Generator
     {
         $textEmbeddingModel = new Voyage('some-text-embedding-model', []);

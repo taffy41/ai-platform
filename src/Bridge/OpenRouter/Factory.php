@@ -42,15 +42,15 @@ final class Factory
         ?Contract $contract = null,
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'openrouter',
+        string $baseUrl = 'https://openrouter.ai/api',
     ): ProviderInterface {
         $httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
-        $baseUrl = 'https://openrouter.ai/api';
 
         $modelClients = [
             new Generic\Completions\ModelClient($httpClient, $baseUrl, $apiKey, '/v1/chat/completions'),
             new Generic\Embeddings\ModelClient($httpClient, $baseUrl, $apiKey, '/v1/embeddings'),
-            new RerankModelClient($httpClient, $apiKey),
-            new SpeechModelClient($httpClient, $apiKey),
+            new RerankModelClient($httpClient, $apiKey, $baseUrl),
+            new SpeechModelClient($httpClient, $apiKey, $baseUrl),
         ];
         $resultConverters = [
             new Generic\Completions\ResultConverter(),
@@ -73,9 +73,10 @@ final class Factory
         ?EventDispatcherInterface $eventDispatcher = null,
         string $name = 'openrouter',
         ?ModelRouterInterface $modelRouter = null,
+        string $baseUrl = 'https://openrouter.ai/api',
     ): Platform {
         return new Platform(
-            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name)],
+            [self::createProvider($apiKey, $httpClient, $modelCatalog, $contract, $eventDispatcher, $name, $baseUrl)],
             $modelRouter ?? new CatalogBasedModelRouter(),
             $eventDispatcher,
         );

@@ -30,12 +30,18 @@ final class ModelClient implements ModelClientInterface
     use JsonBodyEncodingTrait;
 
     private readonly EventSourceHttpClient $httpClient;
+    private readonly string $baseUrl;
 
+    /**
+     * @param string $baseUrl Base URL of a Gemini-compatible endpoint, with or without a trailing slash
+     */
     public function __construct(
         HttpClientInterface $httpClient,
         #[\SensitiveParameter] private readonly string $apiKey,
+        string $baseUrl = 'https://generativelanguage.googleapis.com',
     ) {
         $this->httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
+        $this->baseUrl = rtrim($baseUrl, '/');
     }
 
     public function supports(Model $model): bool
@@ -53,7 +59,8 @@ final class ModelClient implements ModelClientInterface
         }
 
         $url = \sprintf(
-            'https://generativelanguage.googleapis.com/v1beta/models/%s:%s',
+            '%s/v1beta/models/%s:%s',
+            $this->baseUrl,
             $model->getName(),
             $options['stream'] ?? false ? 'streamGenerateContent?alt=sse' : 'generateContent',
         );
