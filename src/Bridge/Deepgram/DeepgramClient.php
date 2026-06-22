@@ -13,6 +13,7 @@ namespace Symfony\AI\Platform\Bridge\Deepgram;
 
 use Symfony\AI\Platform\Capability;
 use Symfony\AI\Platform\Exception\InvalidArgumentException;
+use Symfony\AI\Platform\JsonBodyEncodingTrait;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\ModelClientInterface;
 use Symfony\AI\Platform\Result\RawHttpResult;
@@ -24,6 +25,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final class DeepgramClient implements ModelClientInterface
 {
+    use JsonBodyEncodingTrait;
+
     public function __construct(
         private readonly HttpClientInterface $httpClient,
     ) {
@@ -60,9 +63,12 @@ final class DeepgramClient implements ModelClientInterface
                 'model' => $model->getName(),
                 ...$options,
             ],
-            'json' => [
-                'text' => $payload->asTextToSpeechPayload(),
+            'headers' => [
+                'Content-Type' => 'application/json',
             ],
+            'body' => $this->encodeJsonBody([
+                'text' => $payload->asTextToSpeechPayload(),
+            ]),
         ]));
     }
 
@@ -81,9 +87,12 @@ final class DeepgramClient implements ModelClientInterface
         if ($payload->isUrlBased()) {
             return new RawHttpResult($this->httpClient->request('POST', 'listen', [
                 'query' => $query,
-                'json' => [
-                    'url' => $payload->getAudioUrl(),
+                'headers' => [
+                    'Content-Type' => 'application/json',
                 ],
+                'body' => $this->encodeJsonBody([
+                    'url' => $payload->getAudioUrl(),
+                ]),
             ]));
         }
 

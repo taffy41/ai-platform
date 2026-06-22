@@ -11,10 +11,13 @@
 
 namespace Symfony\AI\Platform\Bridge\MiniMax;
 
+use Symfony\AI\Platform\Exception\IncompleteStreamException;
 use Symfony\AI\Platform\Exception\RuntimeException;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\BinaryResult;
 use Symfony\AI\Platform\Result\ChoiceResult;
+use Symfony\AI\Platform\Result\HttpStatusErrorHandlingTrait;
+use Symfony\AI\Platform\Result\RawHttpResult;
 use Symfony\AI\Platform\Result\RawResultInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Result\Stream\Delta\TextDelta;
@@ -31,6 +34,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final class MiniMaxResultConverter implements ResultConverterInterface
 {
+    use HttpStatusErrorHandlingTrait;
+
     /**
      * Delay, in seconds, between two polls of an asynchronous task.
      */
@@ -60,13 +65,17 @@ final class MiniMaxResultConverter implements ResultConverterInterface
         return $model instanceof MiniMax;
     }
 
-    public function convert(RawResultInterface $result, array $options = []): ResultInterface
+    public function convert(RawResultInterface|RawHttpResult $result, array $options = []): ResultInterface
     {
+        $response = $result->getObject();
+
+        $this->throwOnHttpError($response);
+
         if ($options['stream'] ?? false) {
             return new StreamResult($this->convertStream($result));
         }
 
-        $url = (string) $result->getObject()->getInfo('url');
+        $url = (string) $response->getInfo('url');
 
         return match (true) {
             str_contains($url, '/chat/completions') => new TextResult($result->getData()['choices'][0]['message']['content']),
@@ -89,9 +98,18 @@ final class MiniMaxResultConverter implements ResultConverterInterface
      */
     private function convertStream(RawResultInterface $result): \Generator
     {
+        $sawChunk = false;
+        $sawFinishReason = false;
+
         foreach ($result->getDataStream() as $chunk) {
             if (!\is_array($chunk)) {
                 continue;
+            }
+
+            $sawChunk = true;
+
+            if (null !== ($chunk['choices'][0]['finish_reason'] ?? null)) {
+                $sawFinishReason = true;
             }
 
             $content = $chunk['choices'][0]['delta']['content'] ?? '';
@@ -101,6 +119,10 @@ final class MiniMaxResultConverter implements ResultConverterInterface
             }
 
             yield new TextDelta($content);
+        }
+
+        if ($sawChunk && !$sawFinishReason) {
+            throw new IncompleteStreamException('The MiniMax stream ended before a finish reason.');
         }
     }
 
@@ -159,9 +181,13 @@ final class MiniMaxResultConverter implements ResultConverterInterface
         $fileId = $data['file_id'] ?? null;
 
         for ($poll = 0; $poll < $maxPolls; ++$poll) {
-            $status = $this->httpClient->request('GET', \sprintf('%s/%s?task_id=%s', $this->endpoint, $queryPath, $taskId), [
+            $response = $this->httpClient->request('GET', \sprintf('%s/%s?task_id=%s', $this->endpoint, $queryPath, $taskId), [
                 'auth_bearer' => $this->apiKey,
-            ])->toArray(false);
+            ]);
+
+            $this->throwOnHttpError($response);
+
+            $status = $response->toArray(false);
 
             $fileId = $status['file_id'] ?? $fileId;
             $state = strtolower((string) ($status['status'] ?? ''));
@@ -186,12 +212,20 @@ final class MiniMaxResultConverter implements ResultConverterInterface
             throw new RuntimeException('The MiniMax task did not return a file identifier.');
         }
 
-        $file = $this->httpClient->request('GET', \sprintf('%s/files/retrieve?file_id=%s', $this->endpoint, $fileId), [
+        $response = $this->httpClient->request('GET', \sprintf('%s/files/retrieve?file_id=%s', $this->endpoint, $fileId), [
             'auth_bearer' => $this->apiKey,
-        ])->toArray(false);
+        ]);
+
+        $this->throwOnHttpError($response);
+
+        $file = $response->toArray(false);
 
         $downloadUrl = $file['file']['download_url'] ?? throw new RuntimeException('The MiniMax file does not contain a download URL.');
 
-        return $this->httpClient->request('GET', $downloadUrl)->getContent();
+        $download = $this->httpClient->request('GET', $downloadUrl);
+
+        $this->throwOnHttpError($download);
+
+        return $download->getContent();
     }
 }

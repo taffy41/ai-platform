@@ -15,6 +15,10 @@ use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Bridge\MiniMax\MiniMax;
 use Symfony\AI\Platform\Bridge\MiniMax\MiniMaxResultConverter;
 use Symfony\AI\Platform\Capability;
+use Symfony\AI\Platform\Exception\AuthenticationException;
+use Symfony\AI\Platform\Exception\IncompleteStreamException;
+use Symfony\AI\Platform\Exception\RateLimitExceededException;
+use Symfony\AI\Platform\Exception\ServerException;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\BinaryResult;
 use Symfony\AI\Platform\Result\ChoiceResult;
@@ -27,6 +31,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\JsonMockResponse;
 use Symfony\Component\HttpClient\Response\MockResponse;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
  * @author Guillaume Loulier <personal@guillaumeloulier.fr>
@@ -75,8 +80,11 @@ final class MiniMaxResultConverterTest extends TestCase
             ['object' => 'chat.completion.chunk', 'choices' => [['index' => 0, 'delta' => [], 'finish_reason' => 'stop']]],
         ];
 
+        $httpResponse = $this->createStub(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
         $converter = new MiniMaxResultConverter(new MockHttpClient(), 'key');
-        $result = $converter->convert(new InMemoryRawResult(dataStream: $events), ['stream' => true]);
+        $result = $converter->convert(new InMemoryRawResult([], $events, $httpResponse), ['stream' => true]);
 
         $this->assertInstanceOf(StreamResult::class, $result);
 
@@ -201,5 +209,84 @@ final class MiniMaxResultConverterTest extends TestCase
         $this->assertInstanceOf(BinaryResult::class, $result);
         $this->assertSame('FAKE_VIDEO', $result->getContent());
         $this->assertSame('video/mp4', $result->getMimeType());
+    }
+
+    public function testItThrowsAuthenticationExceptionOnUnauthorized()
+    {
+        $httpClient = new MockHttpClient(new JsonMockResponse(['message' => 'Invalid API key.'], ['http_code' => 401]));
+        $raw = new RawHttpResult($httpClient->request('POST', 'https://api.minimax.io/v1/chat/completions'));
+        $converter = new MiniMaxResultConverter(new MockHttpClient(), 'key');
+
+        $this->expectException(AuthenticationException::class);
+        $this->expectExceptionMessage('Invalid API key.');
+
+        $converter->convert($raw);
+    }
+
+    public function testItThrowsRateLimitExceededExceptionOnTooManyRequests()
+    {
+        $httpClient = new MockHttpClient(new JsonMockResponse(['message' => 'Slow down.'], ['http_code' => 429]));
+        $raw = new RawHttpResult($httpClient->request('POST', 'https://api.minimax.io/v1/chat/completions'));
+        $converter = new MiniMaxResultConverter(new MockHttpClient(), 'key');
+
+        $this->expectException(RateLimitExceededException::class);
+
+        $converter->convert($raw);
+    }
+
+    public function testItThrowsServerExceptionOnServerError()
+    {
+        $httpClient = new MockHttpClient(new MockResponse('Service Unavailable', ['http_code' => 503]));
+        $raw = new RawHttpResult($httpClient->request('POST', 'https://api.minimax.io/v1/chat/completions'));
+        $converter = new MiniMaxResultConverter(new MockHttpClient(), 'key');
+
+        $this->expectException(ServerException::class);
+        $this->expectExceptionMessage('Server error (HTTP 503');
+
+        $converter->convert($raw);
+    }
+
+    public function testItThrowsServerExceptionBeforeStreaming()
+    {
+        $httpClient = new MockHttpClient(new MockResponse('Service Unavailable', ['http_code' => 503]));
+        $raw = new RawHttpResult($httpClient->request('POST', 'https://api.minimax.io/v1/chat/completions'));
+        $converter = new MiniMaxResultConverter(new MockHttpClient(), 'key');
+
+        $this->expectException(ServerException::class);
+
+        $converter->convert($raw, ['stream' => true]);
+    }
+
+    public function testItThrowsServerExceptionWhilePollingAsynchronousTask()
+    {
+        $createClient = new MockHttpClient(new JsonMockResponse(['task_id' => '123', 'file_id' => '456']));
+        $raw = new RawHttpResult($createClient->request('POST', 'https://api.minimax.io/v1/t2a_async_v2'));
+
+        $pollClient = new MockHttpClient(new MockResponse('Service Unavailable', ['http_code' => 503]));
+
+        $converter = new MiniMaxResultConverter($pollClient, 'key', 'https://api.minimax.io/v1', new MockClock());
+
+        $this->expectException(ServerException::class);
+
+        $converter->convert($raw);
+    }
+
+    public function testItThrowsIncompleteStreamWhenFinishReasonIsMissing()
+    {
+        $events = [
+            ['object' => 'chat.completion.chunk', 'choices' => [['index' => 0, 'delta' => ['content' => 'Generated ']]]],
+            // stream cut off: no chunk carrying a finish_reason
+        ];
+
+        $httpResponse = $this->createStub(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
+        $converter = new MiniMaxResultConverter(new MockHttpClient(), 'key');
+        $result = $converter->convert(new InMemoryRawResult([], $events, $httpResponse), ['stream' => true]);
+
+        $this->expectException(IncompleteStreamException::class);
+        $this->expectExceptionMessage('The MiniMax stream ended before a finish reason.');
+
+        iterator_to_array($result->getContent());
     }
 }

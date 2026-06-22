@@ -14,6 +14,7 @@ namespace Symfony\AI\Platform\Bridge\Deepgram;
 use Symfony\AI\Platform\Exception\RuntimeException;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\BinaryResult;
+use Symfony\AI\Platform\Result\HttpStatusErrorHandlingTrait;
 use Symfony\AI\Platform\Result\RawHttpResult;
 use Symfony\AI\Platform\Result\RawResultInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
@@ -31,6 +32,8 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  */
 final class DeepgramResultConverter implements ResultConverterInterface
 {
+    use HttpStatusErrorHandlingTrait;
+
     public function __construct(
         private readonly HttpClientInterface $httpClient,
     ) {
@@ -54,6 +57,8 @@ final class DeepgramResultConverter implements ResultConverterInterface
         $path = \is_string($path) ? $path : '';
 
         if (200 !== $response->getStatusCode()) {
+            $this->throwOnHttpError($response);
+
             throw new RuntimeException($this->extractErrorMessage($response));
         }
 
