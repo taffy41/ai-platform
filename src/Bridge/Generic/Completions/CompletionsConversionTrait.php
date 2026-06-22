@@ -132,7 +132,11 @@ trait CompletionsConversionTrait
         }
 
         foreach ($data['choices'][0]['delta']['tool_calls'] as $i => $toolCall) {
-            if (isset($toolCall['id'])) {
+            // A new tool call starts only on a NON-EMPTY id. OpenAI omits the id on continuation
+            // deltas, but some compatible providers (Alibaba Cloud Qwen / DashScope) repeat it as an
+            // empty string — isset() is true for "", so the empty-string case must be excluded or each
+            // continuation is misread as a start (losing the name and clobbering accumulated arguments).
+            if (isset($toolCall['id']) && '' !== $toolCall['id']) {
                 // initialize tool call
                 $toolCalls[$i] = [
                     'id' => $toolCall['id'],
@@ -163,7 +167,7 @@ trait CompletionsConversionTrait
     protected function yieldToolCallDeltas(array $toolCalls, array $data): \Generator
     {
         foreach ($data['choices'][0]['delta']['tool_calls'] ?? [] as $i => $toolCall) {
-            if (isset($toolCall['id'])) {
+            if (isset($toolCall['id']) && '' !== $toolCall['id']) {
                 yield new ToolCallStart($toolCall['id'], $toolCall['function']['name']);
             } elseif (isset($toolCall['function']['arguments'])) {
                 yield new ToolInputDelta($toolCalls[$i]['id'] ?? '', $toolCalls[$i]['function']['name'] ?? '', $toolCall['function']['arguments']);

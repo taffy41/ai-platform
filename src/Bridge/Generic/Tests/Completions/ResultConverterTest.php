@@ -461,6 +461,50 @@ class ResultConverterTest extends TestCase
         $this->assertSame(['city' => 'Beijing'], $completed[0]->getArguments());
     }
 
+    public function testStreamingToolCallsWithEmptyStringIdOnContinuationChunks()
+    {
+        // Some OpenAI-compatible providers (e.g. Alibaba Cloud Qwen / DashScope) send the tool-call
+        // id ONLY on the first delta as a real value and then repeat it as an EMPTY STRING on every
+        // continuation chunk (OpenAI itself omits the key entirely). `isset()` is true for "", so a
+        // start must be keyed on a NON-EMPTY id — otherwise each continuation is misread as a new
+        // tool-call start, the name is read from a delta that has none (Undefined array key "name"),
+        // and the accumulated arguments are clobbered.
+        $converter = new ResultConverter();
+
+        $events = [
+            ['choices' => [['index' => 0, 'delta' => ['tool_calls' => [
+                ['id' => 'call_1', 'type' => 'function', 'index' => 0, 'function' => ['name' => 'get_weather', 'arguments' => '']],
+            ]]]]],
+            ['choices' => [['index' => 0, 'delta' => ['tool_calls' => [
+                ['id' => '', 'type' => 'function', 'index' => 0, 'function' => ['arguments' => '{"city":']],
+            ]]]]],
+            ['choices' => [['index' => 0, 'delta' => ['tool_calls' => [
+                ['id' => '', 'type' => 'function', 'index' => 0, 'function' => ['arguments' => '"Beijing"}']],
+            ]]]]],
+            ['choices' => [['index' => 0, 'delta' => [], 'finish_reason' => 'tool_calls']]],
+        ];
+
+        $streamResult = $converter->convert(new InMemoryRawResult([], $events, $this->httpResponseStub()), ['stream' => true]);
+
+        $chunks = [];
+        foreach ($streamResult->getContent() as $part) {
+            $chunks[] = $part;
+        }
+
+        $toolCallStarts = array_values(array_filter($chunks, static fn ($c) => $c instanceof ToolCallStart));
+        $this->assertCount(1, $toolCallStarts, 'an empty-string id on continuation chunks must not start a new tool call');
+        $this->assertSame('call_1', $toolCallStarts[0]->getId());
+        $this->assertSame('get_weather', $toolCallStarts[0]->getName());
+
+        $toolCallCompletes = array_values(array_filter($chunks, static fn ($c) => $c instanceof ToolCallComplete));
+        $this->assertCount(1, $toolCallCompletes);
+        $completed = $toolCallCompletes[0]->getToolCalls();
+        $this->assertCount(1, $completed);
+        $this->assertSame('call_1', $completed[0]->getId());
+        $this->assertSame('get_weather', $completed[0]->getName());
+        $this->assertSame(['city' => 'Beijing'], $completed[0]->getArguments());
+    }
+
     public function testStreamingThrowsWhenFinishReasonIsMissing()
     {
         $converter = new ResultConverter();
