@@ -16,6 +16,7 @@ use Symfony\AI\Platform\JsonBodyEncodingTrait;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\ModelClientInterface;
 use Symfony\AI\Platform\Result\RawHttpResult;
+use Symfony\AI\Platform\Result\Stream\HttpStreamInterface;
 use Symfony\AI\Platform\Result\Stream\RawSseStream;
 use Symfony\AI\Platform\StructuredOutput\PlatformSubscriber;
 use Symfony\Component\HttpClient\EventSourceHttpClient;
@@ -70,6 +71,19 @@ class ModelClient implements ModelClientInterface
 
         // The ChatGPT Codex backend streams SSE without a text/event-stream
         // content type, so use a stream parser that handles that framing too.
-        return new RawHttpResult($this->httpClient->request('POST', $this->baseUrl.$this->path, $requestOptions), new RawSseStream());
+        return new RawHttpResult($this->httpClient->request('POST', $this->baseUrl.$this->path, $requestOptions), $this->createStreamParser());
+    }
+
+    /**
+     * Stream parser applied to the raw response.
+     *
+     * Defaults to a lenient SSE parser for backends (e.g. ChatGPT Codex) that
+     * stream without a proper "text/event-stream" content type. Bridges talking
+     * to APIs that always send the correct content type can override this to
+     * return a stricter parser.
+     */
+    protected function createStreamParser(): HttpStreamInterface
+    {
+        return new RawSseStream();
     }
 }

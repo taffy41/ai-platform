@@ -35,6 +35,7 @@ use Symfony\AI\Platform\Result\ThinkingResult;
 use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\AI\Platform\Result\ToolCallResult;
 use Symfony\AI\Platform\ResultConverterInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
  * @author Christopher Hertel <mail@christopher-hertel.de>
@@ -46,7 +47,7 @@ use Symfony\AI\Platform\ResultConverterInterface;
  * @phpstan-type Thinking array{summary: list<array{type: string, text?: string}>, id: string}
  * @phpstan-type Error array{code?: string|null, type?: string|null, param?: string|null, message?: string|null}
  */
-final class ResultConverter implements ResultConverterInterface
+class ResultConverter implements ResultConverterInterface
 {
     private const KEY_OUTPUT = 'output';
 
@@ -80,7 +81,7 @@ final class ResultConverter implements ResultConverterInterface
 
         if (429 === $response->getStatusCode()) {
             $errorMessage = json_decode($response->getContent(false), true)['error']['message'] ?? null;
-            throw new RateLimitExceededException(null, $errorMessage);
+            throw new RateLimitExceededException($this->extractRateLimitReset($response), $errorMessage);
         }
 
         if (($code = $response->getStatusCode()) >= 500) {
@@ -131,6 +132,17 @@ final class ResultConverter implements ResultConverterInterface
     public function getTokenUsageExtractor(): TokenUsageExtractor
     {
         return new TokenUsageExtractor();
+    }
+
+    /**
+     * Resolves the rate-limit reset delay (in seconds) from a 429 response.
+     *
+     * The generic Responses API does not expose a reset time; provider-specific
+     * bridges can override this to parse their own rate-limit headers.
+     */
+    protected function extractRateLimitReset(ResponseInterface $response): ?int
+    {
+        return null;
     }
 
     /**
