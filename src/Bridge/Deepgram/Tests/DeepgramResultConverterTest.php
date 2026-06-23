@@ -16,7 +16,12 @@ use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Bridge\Deepgram\Deepgram;
 use Symfony\AI\Platform\Bridge\Deepgram\DeepgramResultConverter;
 use Symfony\AI\Platform\Capability;
+use Symfony\AI\Platform\Exception\AuthenticationException;
+use Symfony\AI\Platform\Exception\BadRequestException;
+use Symfony\AI\Platform\Exception\ModelNotFoundException;
+use Symfony\AI\Platform\Exception\RateLimitExceededException;
 use Symfony\AI\Platform\Exception\RuntimeException;
+use Symfony\AI\Platform\Exception\ServerException;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\BinaryResult;
 use Symfony\AI\Platform\Result\InMemoryRawResult;
@@ -215,6 +220,50 @@ final class DeepgramResultConverterTest extends TestCase
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('The Deepgram API returned a non-successful status code "500".');
+
+        (new DeepgramResultConverter($httpClient))->convert(new RawHttpResult($response));
+    }
+
+    /**
+     * @param class-string<\Throwable> $expectedException
+     */
+    #[DataProvider('provideTypedExceptionStatuses')]
+    public function testMapsHttpStatusToTypedException(int $statusCode, string $expectedException)
+    {
+        $httpClient = new MockHttpClient([
+            new JsonMockResponse(['err_msg' => 'Something went wrong.'], ['http_code' => $statusCode]),
+        ], 'https://api.deepgram.com/v1/');
+
+        $response = $httpClient->request('POST', 'listen');
+
+        $this->expectException($expectedException);
+
+        (new DeepgramResultConverter($httpClient))->convert(new RawHttpResult($response));
+    }
+
+    /**
+     * @return iterable<string, array{int, class-string<\Throwable>}>
+     */
+    public static function provideTypedExceptionStatuses(): iterable
+    {
+        yield '400 bad request' => [400, BadRequestException::class];
+        yield '401 unauthorized' => [401, AuthenticationException::class];
+        yield '404 not found' => [404, ModelNotFoundException::class];
+        yield '429 rate limited' => [429, RateLimitExceededException::class];
+        yield '500 server error' => [500, ServerException::class];
+        yield '503 server error' => [503, ServerException::class];
+    }
+
+    public function testFallsBackToGenericExceptionOnUnhandledStatus()
+    {
+        $httpClient = new MockHttpClient([
+            new JsonMockResponse(['err_msg' => 'Payment required.'], ['http_code' => 402]),
+        ], 'https://api.deepgram.com/v1/');
+
+        $response = $httpClient->request('POST', 'listen');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('The Deepgram API returned an error: "Payment required.".');
 
         (new DeepgramResultConverter($httpClient))->convert(new RawHttpResult($response));
     }

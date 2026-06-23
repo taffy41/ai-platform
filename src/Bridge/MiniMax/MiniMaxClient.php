@@ -13,6 +13,7 @@ namespace Symfony\AI\Platform\Bridge\MiniMax;
 
 use Symfony\AI\Platform\Capability;
 use Symfony\AI\Platform\Exception\InvalidArgumentException;
+use Symfony\AI\Platform\JsonBodyEncodingTrait;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\ModelClientInterface;
 use Symfony\AI\Platform\Result\RawHttpResult;
@@ -24,6 +25,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final class MiniMaxClient implements ModelClientInterface
 {
+    use JsonBodyEncodingTrait;
+
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         #[\SensitiveParameter] private readonly string $apiKey,
@@ -63,11 +66,14 @@ final class MiniMaxClient implements ModelClientInterface
 
         return new RawHttpResult($this->httpClient->request('POST', \sprintf('%s/chat/completions', $this->endpoint), [
             'auth_bearer' => $this->apiKey,
-            'json' => [
+            'headers' => [
+                'Content-Type' => 'application/json',
+            ],
+            'body' => $this->encodeJsonBody([
                 ...$options,
                 'model' => $model->getName(),
                 'messages' => $payload['messages'],
-            ],
+            ]),
         ]));
     }
 
@@ -91,7 +97,10 @@ final class MiniMaxClient implements ModelClientInterface
 
         return new RawHttpResult($this->httpClient->request('POST', \sprintf('%s/%s', $this->endpoint, $async ? 't2a_async_v2' : 't2a_v2'), [
             'auth_bearer' => $this->apiKey,
-            'json' => $json,
+            'headers' => [
+                'Content-Type' => 'application/json',
+            ],
+            'body' => $this->encodeJsonBody($json),
         ]));
     }
 
@@ -111,7 +120,10 @@ final class MiniMaxClient implements ModelClientInterface
 
         return new RawHttpResult($this->httpClient->request('POST', \sprintf('%s/image_generation', $this->endpoint), [
             'auth_bearer' => $this->apiKey,
-            'json' => $json,
+            'headers' => [
+                'Content-Type' => 'application/json',
+            ],
+            'body' => $this->encodeJsonBody($json),
         ]));
     }
 
@@ -135,7 +147,10 @@ final class MiniMaxClient implements ModelClientInterface
 
         return new RawHttpResult($this->httpClient->request('POST', \sprintf('%s/music_generation', $this->endpoint), [
             'auth_bearer' => $this->apiKey,
-            'json' => $json,
+            'headers' => [
+                'Content-Type' => 'application/json',
+            ],
+            'body' => $this->encodeJsonBody($json),
         ]));
     }
 
@@ -151,7 +166,10 @@ final class MiniMaxClient implements ModelClientInterface
 
         return new RawHttpResult($this->httpClient->request('POST', \sprintf('%s/video_generation', $this->endpoint), [
             'auth_bearer' => $this->apiKey,
-            'json' => $json,
+            'headers' => [
+                'Content-Type' => 'application/json',
+            ],
+            'body' => $this->encodeJsonBody($json),
         ]));
     }
 
