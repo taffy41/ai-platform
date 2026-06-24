@@ -94,7 +94,6 @@ final class ModelApiCatalogTest extends TestCase
 
         $this->assertContains(Capability::EMBEDDINGS, $capabilities);
         $this->assertContains(Capability::INPUT_TEXT, $capabilities);
-        $this->assertContains(Capability::INPUT_MULTIPLE, $capabilities);
     }
 
     public function testModelNotFound()

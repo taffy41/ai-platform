@@ -88,7 +88,7 @@ final class ModelApiCatalog extends AbstractModelCatalog
             if ('embedding' === $mode) {
                 yield $name => [
                     'class' => EmbeddingsModel::class,
-                    'capabilities' => $this->buildEmbeddingCapabilities($info),
+                    'capabilities' => [Capability::EMBEDDINGS, Capability::INPUT_TEXT],
                 ];
             } else {
                 yield $name => [
@@ -97,22 +97,6 @@ final class ModelApiCatalog extends AbstractModelCatalog
                 ];
             }
         }
-    }
-
-    /**
-     * @param array<string, mixed> $info
-     *
-     * @return list<Capability>
-     */
-    private function buildEmbeddingCapabilities(array $info): array
-    {
-        $capabilities = [Capability::EMBEDDINGS, Capability::INPUT_TEXT];
-
-        if ($info['supports_multiple_inputs'] ?? true) {
-            $capabilities[] = Capability::INPUT_MULTIPLE;
-        }
-
-        return $capabilities;
     }
 
     /**

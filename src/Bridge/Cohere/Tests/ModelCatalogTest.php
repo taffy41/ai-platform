@@ -38,11 +38,11 @@ final class ModelCatalogTest extends ModelCatalogTestCase
         yield 'c4ai-aya-vision-32b' => ['c4ai-aya-vision-32b', Cohere::class, [Capability::INPUT_MESSAGES, Capability::INPUT_IMAGE, Capability::OUTPUT_TEXT, Capability::OUTPUT_STREAMING]];
 
         // Embedding models
-        yield 'embed-v4.0' => ['embed-v4.0', Embeddings::class, [Capability::INPUT_MULTIPLE, Capability::INPUT_MULTIMODAL, Capability::EMBEDDINGS]];
-        yield 'embed-english-v3.0' => ['embed-english-v3.0', Embeddings::class, [Capability::INPUT_MULTIPLE, Capability::EMBEDDINGS]];
-        yield 'embed-multilingual-v3.0' => ['embed-multilingual-v3.0', Embeddings::class, [Capability::INPUT_MULTIPLE, Capability::EMBEDDINGS]];
-        yield 'embed-english-light-v3.0' => ['embed-english-light-v3.0', Embeddings::class, [Capability::INPUT_MULTIPLE, Capability::EMBEDDINGS]];
-        yield 'embed-multilingual-light-v3.0' => ['embed-multilingual-light-v3.0', Embeddings::class, [Capability::INPUT_MULTIPLE, Capability::EMBEDDINGS]];
+        yield 'embed-v4.0' => ['embed-v4.0', Embeddings::class, [Capability::INPUT_TEXT, Capability::INPUT_MULTIMODAL, Capability::EMBEDDINGS]];
+        yield 'embed-english-v3.0' => ['embed-english-v3.0', Embeddings::class, [Capability::INPUT_TEXT, Capability::EMBEDDINGS]];
+        yield 'embed-multilingual-v3.0' => ['embed-multilingual-v3.0', Embeddings::class, [Capability::INPUT_TEXT, Capability::EMBEDDINGS]];
+        yield 'embed-english-light-v3.0' => ['embed-english-light-v3.0', Embeddings::class, [Capability::INPUT_TEXT, Capability::EMBEDDINGS]];
+        yield 'embed-multilingual-light-v3.0' => ['embed-multilingual-light-v3.0', Embeddings::class, [Capability::INPUT_TEXT, Capability::EMBEDDINGS]];
 
         // Reranking models
         yield 'rerank-v4.0-pro' => ['rerank-v4.0-pro', Reranker::class, [Capability::INPUT_MULTIPLE, Capability::RERANKING]];

@@ -161,35 +161,35 @@ final class ModelCatalog extends AbstractModelCatalog
             'embed-english-light-v3.0' => [
                 'class' => Embeddings::class,
                 'capabilities' => [
-                    Capability::INPUT_MULTIPLE,
+                    Capability::INPUT_TEXT,
                     Capability::EMBEDDINGS,
                 ],
             ],
             'embed-english-v3.0' => [
                 'class' => Embeddings::class,
                 'capabilities' => [
-                    Capability::INPUT_MULTIPLE,
+                    Capability::INPUT_TEXT,
                     Capability::EMBEDDINGS,
                 ],
             ],
             'embed-multilingual-light-v3.0' => [
                 'class' => Embeddings::class,
                 'capabilities' => [
-                    Capability::INPUT_MULTIPLE,
+                    Capability::INPUT_TEXT,
                     Capability::EMBEDDINGS,
                 ],
             ],
             'embed-multilingual-v3.0' => [
                 'class' => Embeddings::class,
                 'capabilities' => [
-                    Capability::INPUT_MULTIPLE,
+                    Capability::INPUT_TEXT,
                     Capability::EMBEDDINGS,
                 ],
             ],
             'embed-v4.0' => [
                 'class' => Embeddings::class,
                 'capabilities' => [
-                    Capability::INPUT_MULTIPLE,
+                    Capability::INPUT_TEXT,
                     Capability::INPUT_MULTIMODAL,
                     Capability::EMBEDDINGS,
                 ],
