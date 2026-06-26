@@ -20,6 +20,15 @@ use Symfony\AI\Platform\Exception\RateLimitExceededException;
 use Symfony\AI\Platform\Exception\RuntimeException;
 use Symfony\AI\Platform\Exception\ServerException;
 use Symfony\AI\Platform\Model;
+use Symfony\AI\Platform\Result\BinaryResult;
+use Symfony\AI\Platform\Result\CodeExecutionResult;
+use Symfony\AI\Platform\Result\ComputerCallResult;
+use Symfony\AI\Platform\Result\ExecutableCodeResult;
+use Symfony\AI\Platform\Result\FileSearchResult;
+use Symfony\AI\Platform\Result\LocalShellCallResult;
+use Symfony\AI\Platform\Result\McpApprovalRequestResult;
+use Symfony\AI\Platform\Result\McpCallResult;
+use Symfony\AI\Platform\Result\McpListToolsResult;
 use Symfony\AI\Platform\Result\MultiPartResult;
 use Symfony\AI\Platform\Result\RawHttpResult;
 use Symfony\AI\Platform\Result\RawResultInterface;
@@ -34,6 +43,7 @@ use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\ThinkingResult;
 use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\AI\Platform\Result\ToolCallResult;
+use Symfony\AI\Platform\Result\WebSearchResult;
 use Symfony\AI\Platform\ResultConverterInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
@@ -46,6 +56,16 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  * @phpstan-type FunctionCall array{id?: string|null, arguments: string, call_id?: string|null, name: string, type: 'function_call'}
  * @phpstan-type Thinking array{summary: list<array{type: string, text?: string}>, id: string}
  * @phpstan-type Error array{code?: string|null, type?: string|null, param?: string|null, message?: string|null}
+ * @phpstan-type WebSearchCall array{type: 'web_search_call', id?: string, status?: string, action?: array{type?: string, query?: string, queries?: list<string>}}
+ * @phpstan-type FileSearchCall array{type: 'file_search_call', id?: string, status?: string, queries?: list<string>, results?: list<array<string, mixed>>|null}
+ * @phpstan-type CodeInterpreterCall array{type: 'code_interpreter_call', id?: string, status?: string, code?: string|null, outputs?: list<array{type?: string, logs?: string, url?: string}>|null}
+ * @phpstan-type ImageGenerationCall array{type: 'image_generation_call', id?: string, status?: string, result?: string|null}
+ * @phpstan-type McpCall array{type: 'mcp_call', id?: string, status?: string, server_label?: string, name?: string, arguments?: string, output?: string|null, error?: string|null}
+ * @phpstan-type McpListTools array{type: 'mcp_list_tools', id?: string, server_label?: string, tools?: list<array<string, mixed>>}
+ * @phpstan-type McpApprovalRequest array{type: 'mcp_approval_request', id?: string, server_label?: string, name?: string, arguments?: string}
+ * @phpstan-type ComputerCall array{type: 'computer_call', id?: string, status?: string, call_id?: string, action?: array<string, mixed>, pending_safety_checks?: list<array{id: string, code?: string|null, message?: string|null}>}
+ * @phpstan-type LocalShellCall array{type: 'local_shell_call', id?: string, status?: string, call_id?: string, action?: array{type?: string, command?: list<string>}}
+ * @phpstan-type OutputItem OutputMessage|FunctionCall|Thinking|WebSearchCall|FileSearchCall|CodeInterpreterCall|ImageGenerationCall|McpCall|McpListTools|McpApprovalRequest|ComputerCall|LocalShellCall
  */
 class ResultConverter implements ResultConverterInterface
 {
@@ -146,7 +166,7 @@ class ResultConverter implements ResultConverterInterface
     }
 
     /**
-     * @param array<OutputMessage|FunctionCall|Thinking> $output
+     * @param array<OutputItem> $output
      *
      * @return ResultInterface[]
      */
@@ -168,7 +188,7 @@ class ResultConverter implements ResultConverterInterface
     }
 
     /**
-     * @param OutputMessage|Thinking $item
+     * @param OutputItem $item
      *
      * @return iterable<ResultInterface>
      */
@@ -176,19 +196,171 @@ class ResultConverter implements ResultConverterInterface
     {
         $type = $item['type'] ?? null;
 
+        // Built-in server-side tool calls (web search, file search, code
+        // interpreter, image generation, computer use, local shell, hosted MCP)
+        // are reported as their own output items next to the assistant message.
+        // Convert them into typed results so consumers can introspect what the
+        // model did, while the message item is still converted as usual.
         return match ($type) {
             'message' => $this->convertOutputMessage($item),
             'reasoning' => $this->convertReasoning($item),
-            // Built-in server-side tool calls (web search, file search, code
-            // interpreter, image generation, computer use, MCP, …) are reported
-            // as their own output items but carry no assistant-facing result.
-            // Skip them so the actual message item is still converted instead of
-            // aborting the whole response.
-            'web_search_call', 'file_search_call', 'code_interpreter_call',
-            'image_generation_call', 'computer_call', 'local_shell_call',
-            'mcp_call', 'mcp_list_tools', 'mcp_approval_request' => [],
+            'web_search_call' => $this->convertWebSearchCall($item),
+            'file_search_call' => $this->convertFileSearchCall($item),
+            'code_interpreter_call' => $this->convertCodeInterpreterCall($item),
+            'image_generation_call' => $this->convertImageGenerationCall($item),
+            'computer_call' => $this->convertComputerCall($item),
+            'local_shell_call' => $this->convertLocalShellCall($item),
+            'mcp_call' => $this->convertMcpCall($item),
+            'mcp_list_tools' => $this->convertMcpListTools($item),
+            'mcp_approval_request' => $this->convertMcpApprovalRequest($item),
             default => throw new RuntimeException(\sprintf('Unsupported output type "%s".', $type)),
         };
+    }
+
+    /**
+     * @param WebSearchCall $item
+     *
+     * @return list<WebSearchResult>
+     */
+    private function convertWebSearchCall(array $item): array
+    {
+        $action = $item['action'] ?? [];
+        $query = $action['query'] ?? ($action['queries'][0] ?? null);
+
+        return [new WebSearchResult($query, $item['id'] ?? null, $item['status'] ?? null)];
+    }
+
+    /**
+     * @param FileSearchCall $item
+     *
+     * @return list<FileSearchResult>
+     */
+    private function convertFileSearchCall(array $item): array
+    {
+        return [new FileSearchResult(
+            array_values($item['queries'] ?? []),
+            array_values($item['results'] ?? []),
+            $item['id'] ?? null,
+            $item['status'] ?? null,
+        )];
+    }
+
+    /**
+     * @param CodeInterpreterCall $item
+     *
+     * @return list<ExecutableCodeResult|CodeExecutionResult>
+     */
+    private function convertCodeInterpreterCall(array $item): array
+    {
+        $id = $item['id'] ?? null;
+        $results = [new ExecutableCodeResult($item['code'] ?? '', 'python', $id)];
+
+        $outputs = $item['outputs'] ?? null;
+        if (null !== $outputs && [] !== $outputs) {
+            $logs = '';
+            foreach ($outputs as $output) {
+                if ('logs' === ($output['type'] ?? null) && isset($output['logs'])) {
+                    $logs .= $output['logs'];
+                }
+            }
+
+            $results[] = new CodeExecutionResult('failed' !== ($item['status'] ?? null), '' !== $logs ? $logs : null, $id);
+        }
+
+        return $results;
+    }
+
+    /**
+     * @param ImageGenerationCall $item
+     *
+     * @return list<BinaryResult>
+     */
+    private function convertImageGenerationCall(array $item): array
+    {
+        $result = $item['result'] ?? null;
+        if (null === $result || '' === $result) {
+            return [];
+        }
+
+        return [BinaryResult::fromBase64($result, 'image/png')];
+    }
+
+    /**
+     * @param ComputerCall $item
+     *
+     * @return list<ComputerCallResult>
+     */
+    private function convertComputerCall(array $item): array
+    {
+        return [new ComputerCallResult(
+            $item['action'] ?? [],
+            $item['call_id'] ?? null,
+            array_values($item['pending_safety_checks'] ?? []),
+            $item['id'] ?? null,
+            $item['status'] ?? null,
+        )];
+    }
+
+    /**
+     * @param LocalShellCall $item
+     *
+     * @return list<LocalShellCallResult>
+     */
+    private function convertLocalShellCall(array $item): array
+    {
+        return [new LocalShellCallResult(
+            array_values($item['action']['command'] ?? []),
+            $item['call_id'] ?? null,
+            $item['id'] ?? null,
+            $item['status'] ?? null,
+        )];
+    }
+
+    /**
+     * @param McpCall $item
+     *
+     * @return list<McpCallResult>
+     */
+    private function convertMcpCall(array $item): array
+    {
+        return [new McpCallResult(
+            $item['server_label'] ?? '',
+            $item['name'] ?? '',
+            $item['arguments'] ?? null,
+            $item['output'] ?? null,
+            $item['error'] ?? null,
+            $item['id'] ?? null,
+            $item['status'] ?? null,
+        )];
+    }
+
+    /**
+     * @param McpListTools $item
+     *
+     * @return list<McpListToolsResult>
+     */
+    private function convertMcpListTools(array $item): array
+    {
+        return [new McpListToolsResult(
+            $item['server_label'] ?? '',
+            array_values($item['tools'] ?? []),
+            $item['id'] ?? null,
+        )];
+    }
+
+    /**
+     * @param McpApprovalRequest $item
+     *
+     * @return list<McpApprovalRequestResult>
+     */
+    private function convertMcpApprovalRequest(array $item): array
+    {
+        return [new McpApprovalRequestResult(
+            $item['server_label'] ?? '',
+            $item['name'] ?? '',
+            $item['arguments'] ?? null,
+            $item['id'] ?? null,
+        )];
     }
 
     private function convertStream(RawResultInterface|RawHttpResult $result): \Generator
@@ -292,9 +464,9 @@ class ResultConverter implements ResultConverterInterface
     }
 
     /**
-     * @param array<OutputMessage|FunctionCall|Thinking> $output
+     * @param array<OutputItem> $output
      *
-     * @return list<ToolCallResult|array<OutputMessage|Thinking>|null>
+     * @return list<ToolCallResult|array<OutputItem>|null>
      */
     private function extractFunctionCalls(array $output): array
     {
