@@ -273,7 +273,11 @@ final class ResultConverterTest extends TestCase
                     'type' => 'web_search_call',
                     'id' => 'ws_1',
                     'status' => 'completed',
-                    'action' => ['type' => 'search', 'query' => 'latest AI news'],
+                    'action' => [
+                        'type' => 'search',
+                        'query' => 'latest AI news',
+                        'queries' => ['latest AI news', 'AI industry developments today'],
+                    ],
                 ],
                 [
                     'type' => 'message',
@@ -298,9 +302,31 @@ final class ResultConverterTest extends TestCase
         $this->assertSame('completed', $parts[0]->getStatus());
         $this->assertInstanceOf(TextResult::class, $parts[1]);
         $this->assertSame('The answer is 42.', $result->asText());
+        $this->assertSame(['latest AI news', 'AI industry developments today'], $parts[0]->getQueries());
     }
 
-    public function testConvertWebSearchCallReadsQueryFromQueriesList()
+    public function testConvertWebSearchCallReadsQuery()
+    {
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $httpResponse->method('toArray')->willReturn([
+            'output' => [
+                [
+                    'type' => 'web_search_call',
+                    'id' => 'ws_2',
+                    'status' => 'completed',
+                    'action' => ['type' => 'search', 'query' => 'first query', 'queries' => ['second query', 'third query']],
+                ],
+            ],
+        ]);
+
+        $result = $converter->convert(new RawHttpResult($httpResponse));
+
+        $this->assertInstanceOf(WebSearchResult::class, $result);
+        $this->assertSame('first query', $result->getQuery());
+    }
+
+    public function testConvertWebSearchCallReadsFallbackQueryFromQueriesList()
     {
         $converter = new ResultConverter();
         $httpResponse = $this->createMock(ResponseInterface::class);

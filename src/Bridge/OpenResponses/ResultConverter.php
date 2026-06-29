@@ -225,9 +225,10 @@ class ResultConverter implements ResultConverterInterface
     private function convertWebSearchCall(array $item): array
     {
         $action = $item['action'] ?? [];
-        $query = $action['query'] ?? ($action['queries'][0] ?? null);
+        $queries = $action['queries'] ?? [];
+        $query = $action['query'] ?? ($queries[0] ?? null);
 
-        return [new WebSearchResult($query, $item['id'] ?? null, $item['status'] ?? null)];
+        return [new WebSearchResult($query, $item['id'] ?? null, $item['status'] ?? null, $queries)];
     }
 
     /**
