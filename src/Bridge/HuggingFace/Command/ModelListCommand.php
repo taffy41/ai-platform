@@ -14,29 +14,40 @@ namespace Symfony\AI\Platform\Bridge\HuggingFace\Command;
 use Symfony\AI\Platform\Bridge\HuggingFace\ApiClient;
 use Symfony\AI\Platform\Model;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand('ai:huggingface:model-list', 'Lists all available models on Hugging Face')]
-final class ModelListCommand
+final class ModelListCommand extends Command
 {
     public function __construct(
         private readonly ApiClient $apiClient,
     ) {
+        parent::__construct();
     }
 
-    public function __invoke(
-        SymfonyStyle $io,
-        #[Option('Name of the inference provider to filter models by', 'provider', 'p')]
-        ?string $provider = null,
-        #[Option('Name of the task to filter models by', 'task', 't')]
-        ?string $task = null,
-        #[Option('Search term to filter models by', 'search', 's')]
-        ?string $search = null,
-        #[Option('Only list models that are "warm" (i.e. ready for inference without cold start)', 'warm', 'w')]
-        bool $warm = false,
-    ): int {
+    protected function configure(): void
+    {
+        $this
+            ->addOption('provider', 'p', InputOption::VALUE_OPTIONAL, 'Name of the inference provider to filter models by')
+            ->addOption('task', 't', InputOption::VALUE_OPTIONAL, 'Name of the task to filter models by')
+            ->addOption('search', 's', InputOption::VALUE_OPTIONAL, 'Search term to filter models by')
+            ->addOption('warm', 'w', InputOption::VALUE_NONE, 'Only list models that are "warm" (i.e. ready for inference without cold start)')
+        ;
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $io = new SymfonyStyle($input, $output);
+
+        $provider = $input->getOption('provider');
+        $task = $input->getOption('task');
+        $search = $input->getOption('search');
+        $warm = $input->getOption('warm');
+
         $io->title('Hugging Face Model Listing');
 
         $models = $this->apiClient->getModels($provider, $task, $search, $warm);

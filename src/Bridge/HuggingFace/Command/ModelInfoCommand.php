@@ -12,24 +12,35 @@
 namespace Symfony\AI\Platform\Bridge\HuggingFace\Command;
 
 use Symfony\AI\Platform\Bridge\HuggingFace\ApiClient;
-use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand('ai:huggingface:model-info', 'Retrieves inference information about a model on Hugging Face')]
-final class ModelInfoCommand
+final class ModelInfoCommand extends Command
 {
     public function __construct(
         private readonly ApiClient $apiClient,
     ) {
+        parent::__construct();
     }
 
-    public function __invoke(
-        SymfonyStyle $io,
-        #[Argument('Name of the model to get information about')]
-        string $model,
-    ): int {
+    protected function configure(): void
+    {
+        $this
+            ->addArgument('model', InputArgument::REQUIRED, 'Name of the model to get information about')
+        ;
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $io = new SymfonyStyle($input, $output);
+
+        $model = $input->getArgument('model');
+
         $io->title('Hugging Face Model Information');
 
         $info = $this->apiClient->getModel($model);

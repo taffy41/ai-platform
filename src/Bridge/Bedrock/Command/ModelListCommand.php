@@ -13,30 +13,41 @@ namespace Symfony\AI\Platform\Bridge\Bedrock\Command;
 
 use Symfony\AI\Platform\Bridge\Bedrock\BedrockClient;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
  * @author Christopher Hertel <mail@christopher-hertel.de>
  */
 #[AsCommand('ai:bedrock:model-list', 'Lists available foundation models on Amazon Bedrock')]
-final class ModelListCommand
+final class ModelListCommand extends Command
 {
     public function __construct(
         private readonly BedrockClient $bedrockClient,
     ) {
+        parent::__construct();
     }
 
-    public function __invoke(
-        SymfonyStyle $io,
-        #[Option('Filter by provider name (e.g. "Anthropic", "Amazon", "Meta")', 'provider', 'p')]
-        ?string $provider = null,
-        #[Option('Filter by output modality (e.g. "TEXT", "IMAGE", "EMBEDDING")', 'output-modality', 'o')]
-        ?string $outputModality = null,
-        #[Option('Filter by inference type (e.g. "ON_DEMAND", "PROVISIONED")', 'inference-type', 'i')]
-        ?string $inferenceType = null,
-    ): int {
+    protected function configure(): void
+    {
+        $this
+            ->addOption('provider', 'p', InputOption::VALUE_OPTIONAL, 'Filter by provider name (e.g. "Anthropic", "Amazon", "Meta")')
+            ->addOption('output-modality', 'o', InputOption::VALUE_OPTIONAL, 'Filter by output modality (e.g. "TEXT", "IMAGE", "EMBEDDING")')
+            ->addOption('inference-type', 'i', InputOption::VALUE_OPTIONAL, 'Filter by inference type (e.g. "ON_DEMAND", "PROVISIONED")')
+        ;
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $io = new SymfonyStyle($input, $output);
+
+        $provider = $input->getOption('provider');
+        $outputModality = $input->getOption('output-modality');
+        $inferenceType = $input->getOption('inference-type');
+
         $io->title('Amazon Bedrock Foundation Models');
 
         $models = $this->bedrockClient->listFoundationModels($provider, $outputModality, $inferenceType);
