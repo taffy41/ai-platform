@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.13
+----
+
+ * Throw `ServerException` when an OpenAI response reports that the server is overloaded
+
 0.12
 ----
 

@@ -1310,6 +1310,42 @@ final class ResultConverterTest extends TestCase
         iterator_to_array($streamResult->getContent());
     }
 
+    /**
+     * @param array{code?: string, type?: string, message: string} $error
+     */
+    #[DataProvider('provideOverloadedResponses')]
+    public function testStreamThrowsServerExceptionOnOverloadedResponse(array $error)
+    {
+        $converter = new ResultConverter();
+
+        $httpResponse = $this->createStub(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
+        $streamResult = $converter->convert(new InMemoryRawResult([], [[
+            'type' => 'response.failed',
+            'response' => ['error' => $error],
+        ]], $httpResponse), ['stream' => true]);
+
+        $this->expectException(ServerException::class);
+
+        iterator_to_array($streamResult->getContent());
+    }
+
+    /**
+     * @return iterable<string, array{array{code?: string, type?: string, message: string}}>
+     */
+    public static function provideOverloadedResponses(): iterable
+    {
+        yield 'overloaded code' => [[
+            'code' => 'server_is_overloaded',
+            'message' => 'Our servers are currently overloaded. Please try again later.',
+        ]];
+        yield 'service unavailable type' => [[
+            'type' => 'service_unavailable_error',
+            'message' => 'Service unavailable.',
+        ]];
+    }
+
     public function testStreamThrowsExceptionOnErrorEvent()
     {
         $converter = new ResultConverter();

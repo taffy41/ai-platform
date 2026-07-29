@@ -632,8 +632,8 @@ class ResultConverter implements ResultConverterInterface
      */
     private function isServerError(array $error): bool
     {
-        return \in_array($error['code'], ['server_error', 'internal_error'], true)
-            || \in_array($error['type'], ['server_error', 'internal_error'], true);
+        return \in_array($error['code'], ['server_error', 'internal_error', 'server_is_overloaded'], true)
+            || \in_array($error['type'], ['server_error', 'internal_error', 'service_unavailable_error'], true);
     }
 
     /**
