@@ -43,6 +43,7 @@ use Symfony\AI\Platform\Result\Stream\Delta\MetadataDelta;
 use Symfony\AI\Platform\Result\Stream\Delta\TextDelta;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingComplete;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingDelta;
+use Symfony\AI\Platform\Result\Stream\Delta\ThinkingSignature;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingStart;
 use Symfony\AI\Platform\Result\Stream\Delta\ToolCallComplete;
 use Symfony\AI\Platform\Result\StreamResult;
@@ -258,6 +259,76 @@ final class ResultConverterTest extends TestCase
         $this->assertSame('Then I divide by 8.', $parts[1]->getContent());
         $this->assertInstanceOf(TextResult::class, $parts[2]);
         $this->assertSame('x = -3.75', $parts[2]->getContent());
+    }
+
+    public function testConvertReasoningAttachesSerializedItemAsSignature()
+    {
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $reasoningItem = [
+            'type' => 'reasoning',
+            'id' => 'rs_1',
+            'summary' => [
+                ['type' => 'summary_text', 'text' => 'Thinking it through.'],
+            ],
+            'encrypted_content' => 'gAAAAA-encrypted',
+        ];
+        $httpResponse->method('toArray')->willReturn([
+            'output' => [
+                $reasoningItem,
+                [
+                    'type' => 'message',
+                    'id' => 'msg_1',
+                    'role' => 'assistant',
+                    'content' => [[
+                        'type' => 'output_text',
+                        'text' => 'final',
+                    ]],
+                ],
+            ],
+        ]);
+
+        $result = $converter->convert(new RawHttpResult($httpResponse));
+
+        $this->assertInstanceOf(MultiPartResult::class, $result);
+        $parts = $result->getContent();
+        $this->assertInstanceOf(ThinkingResult::class, $parts[0]);
+        $this->assertSame('Thinking it through.', $parts[0]->getContent());
+        $this->assertSame($reasoningItem, json_decode($parts[0]->getSignature(), true));
+    }
+
+    public function testConvertReasoningWithEncryptedContentButNoSummaryKeepsSignature()
+    {
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $reasoningItem = [
+            'type' => 'reasoning',
+            'id' => 'rs_1',
+            'summary' => [],
+            'encrypted_content' => 'gAAAAA-encrypted',
+        ];
+        $httpResponse->method('toArray')->willReturn([
+            'output' => [
+                $reasoningItem,
+                [
+                    'type' => 'message',
+                    'id' => 'msg_1',
+                    'role' => 'assistant',
+                    'content' => [[
+                        'type' => 'output_text',
+                        'text' => 'final',
+                    ]],
+                ],
+            ],
+        ]);
+
+        $result = $converter->convert(new RawHttpResult($httpResponse));
+
+        $this->assertInstanceOf(MultiPartResult::class, $result);
+        $parts = $result->getContent();
+        $this->assertInstanceOf(ThinkingResult::class, $parts[0]);
+        $this->assertNull($parts[0]->getContent());
+        $this->assertSame($reasoningItem, json_decode($parts[0]->getSignature(), true));
     }
 
     public function testConvertReasoningWithoutSummaryIsDropped()
@@ -691,6 +762,7 @@ final class ResultConverterTest extends TestCase
                     'type' => 'reasoning',
                     'id' => 'rs_1',
                     'summary' => [],
+                    'encrypted_content' => 'gAAAAA-encrypted',
                 ],
             ],
         ]);
@@ -711,6 +783,7 @@ final class ResultConverterTest extends TestCase
                     'type' => 'reasoning',
                     'id' => 'rs_1',
                     'summary' => [],
+                    'encrypted_content' => 'gAAAAA-encrypted',
                 ],
             ],
         ]);
@@ -1427,6 +1500,52 @@ final class ResultConverterTest extends TestCase
         $this->assertSame('Let me think about this...', $chunks[3]->getThinking());
         $this->assertInstanceOf(TextDelta::class, $chunks[4]);
         $this->assertSame('The answer is 42.', $chunks[4]->getText());
+    }
+
+    public function testStreamEmitsThinkingSignatureForReasoningItems()
+    {
+        $converter = new ResultConverter();
+
+        $httpResponse = $this->createStub(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
+        $reasoningItem = [
+            'type' => 'reasoning',
+            'id' => 'rs_1',
+            'summary' => [
+                ['type' => 'summary_text', 'text' => 'Reasoning about it.'],
+            ],
+            'encrypted_content' => 'gAAAAA-encrypted',
+        ];
+
+        $events = [
+            [
+                'type' => 'response.output_item.done',
+                'item' => $reasoningItem,
+            ],
+            [
+                'type' => 'response.output_text.delta',
+                'delta' => 'The answer is 42.',
+            ],
+            [
+                'type' => 'response.completed',
+                'response' => [
+                    'output' => [],
+                ],
+            ],
+        ];
+
+        $raw = new InMemoryRawResult([], $events, $httpResponse);
+
+        $streamResult = $converter->convert($raw, ['stream' => true]);
+
+        $this->assertInstanceOf(StreamResult::class, $streamResult);
+
+        $chunks = iterator_to_array($streamResult->getContent());
+
+        $this->assertInstanceOf(ThinkingSignature::class, $chunks[0]);
+        $this->assertSame($reasoningItem, json_decode($chunks[0]->getSignature(), true));
+        $this->assertInstanceOf(TextDelta::class, $chunks[1]);
     }
 
     public function testThrowsServerExceptionOnServerErrorStatusBeforeStreaming()

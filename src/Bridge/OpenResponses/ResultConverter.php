@@ -39,6 +39,7 @@ use Symfony\AI\Platform\Result\Stream\Delta\MetadataDelta;
 use Symfony\AI\Platform\Result\Stream\Delta\TextDelta;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingComplete;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingDelta;
+use Symfony\AI\Platform\Result\Stream\Delta\ThinkingSignature;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingStart;
 use Symfony\AI\Platform\Result\Stream\Delta\ToolCallComplete;
 use Symfony\AI\Platform\Result\StreamResult;
@@ -57,7 +58,7 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  * @phpstan-type OutputText array{type: 'output_text', text: string}
  * @phpstan-type Refusal array{type: 'refusal', refusal: string}
  * @phpstan-type FunctionCall array{id?: string|null, arguments: string, call_id?: string|null, name: string, type: 'function_call'}
- * @phpstan-type Thinking array{summary: list<array{type: string, text?: string}>, id: string}
+ * @phpstan-type Thinking array{summary: list<array{type: string, text?: string}>, id: string, encrypted_content?: string|null}
  * @phpstan-type Error array{code?: string|null, type?: string|null, param?: string|null, message?: string|null}
  * @phpstan-type WebSearchCall array{type: 'web_search_call', id?: string, status?: string, action?: array{type?: string, query?: string, queries?: list<string>}}
  * @phpstan-type FileSearchCall array{type: 'file_search_call', id?: string, status?: string, queries?: list<string>, results?: list<array<string, mixed>>|null}
@@ -136,7 +137,7 @@ class ResultConverter implements ResultConverterInterface
 
         $results = $this->convertOutputArray($data[self::KEY_OUTPUT]);
 
-        if ([] === $results) {
+        if (!$this->containsContent($results)) {
             if ('incomplete' === ($data['status'] ?? null)) {
                 $reason = $data['incomplete_details']['reason'] ?? 'unknown';
                 if (!\is_string($reason) || '' === $reason) {
@@ -210,6 +211,20 @@ class ResultConverter implements ResultConverterInterface
 
         foreach ($result->getContent() as $part) {
             if ($part instanceof ToolCallResult) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param ResultInterface[] $results
+     */
+    private function containsContent(array $results): bool
+    {
+        foreach ($results as $result) {
+            if (!$result instanceof ThinkingResult || null !== $result->getContent()) {
                 return true;
             }
         }
@@ -502,6 +517,14 @@ class ResultConverter implements ResultConverterInterface
                 $toolCalls[$toolCall->getId()] = $toolCall;
             }
 
+            // The full reasoning item (including encrypted_content when requested
+            // via include: ["reasoning.encrypted_content"]) is emitted as the
+            // thinking signature so that requests using "store" => false can
+            // replay it on subsequent turns.
+            if ('response.output_item.done' === $type && \is_array($event['item'] ?? null) && 'reasoning' === ($event['item']['type'] ?? null)) {
+                yield new ThinkingSignature(json_encode($event['item'], \JSON_THROW_ON_ERROR));
+            }
+
             if ('response.completed' !== $type) {
                 continue;
             }
@@ -603,10 +626,21 @@ class ResultConverter implements ResultConverterInterface
      */
     private function convertReasoning(array $item): \Generator
     {
+        // The serialized reasoning item doubles as the thinking signature so
+        // that requests using "store" => false can replay it on subsequent
+        // turns. It is attached to the first emitted result to avoid replay
+        // duplication.
+        $signature = json_encode($item, \JSON_THROW_ON_ERROR);
+
         foreach ($item['summary'] ?? [] as $entry) {
             if ('' !== ($entry['text'] ?? '')) {
-                yield new ThinkingResult($entry['text']);
+                yield new ThinkingResult($entry['text'], $signature);
+                $signature = null;
             }
+        }
+
+        if (null !== $signature && isset($item['encrypted_content'])) {
+            yield new ThinkingResult(null, $signature);
         }
     }
 

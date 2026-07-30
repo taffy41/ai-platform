@@ -15,6 +15,7 @@ use Symfony\AI\Platform\Bridge\OpenResponses\ResponsesModel;
 use Symfony\AI\Platform\Contract\Normalizer\ModelContractNormalizer;
 use Symfony\AI\Platform\Message\AssistantMessage;
 use Symfony\AI\Platform\Message\Content\Text;
+use Symfony\AI\Platform\Message\Content\Thinking;
 use Symfony\AI\Platform\Model;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareTrait;
@@ -29,16 +30,17 @@ final class AssistantMessageNormalizer extends ModelContractNormalizer implement
     /**
      * @param AssistantMessage $data
      *
-     * @return array{
-     *     role: 'assistant',
-     *     type: 'message',
-     *     content: ?string
-     * }
+     * @return list<array<string, mixed>>
      */
     public function normalize(mixed $data, ?string $format = null, array $context = []): array
     {
+        $reasoningItems = $this->extractReasoningItems($data);
+
         if ($data->hasToolCalls()) {
-            return $this->normalizer->normalize($data->getToolCalls(), $format, $context);
+            /** @var list<array<string, mixed>> $toolCalls */
+            $toolCalls = $this->normalizer->normalize($data->getToolCalls(), $format, $context);
+
+            return array_merge($reasoningItems, $toolCalls);
         }
 
         $text = '';
@@ -49,9 +51,12 @@ final class AssistantMessageNormalizer extends ModelContractNormalizer implement
         }
 
         return [
-            'role' => $data->getRole()->value,
-            'type' => 'message',
-            'content' => '' === $text ? null : $text,
+            ...$reasoningItems,
+            [
+                'role' => $data->getRole()->value,
+                'type' => 'message',
+                'content' => '' === $text ? null : $text,
+            ],
         ];
     }
 
@@ -63,5 +68,32 @@ final class AssistantMessageNormalizer extends ModelContractNormalizer implement
     protected function supportsModel(Model $model): bool
     {
         return $model instanceof ResponsesModel;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function extractReasoningItems(AssistantMessage $data): array
+    {
+        $items = [];
+
+        foreach ($data->getContent() as $part) {
+            if (!$part instanceof Thinking || null === $part->getSignature()) {
+                continue;
+            }
+
+            try {
+                $item = json_decode($part->getSignature(), true, flags: \JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                // Signatures from other providers may be opaque strings
+                continue;
+            }
+
+            if (\is_array($item) && 'reasoning' === ($item['type'] ?? null)) {
+                $items[] = $item;
+            }
+        }
+
+        return $items;
     }
 }

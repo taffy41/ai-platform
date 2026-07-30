@@ -19,6 +19,7 @@ use Symfony\AI\Platform\Bridge\OpenResponses\Contract\ToolCallNormalizer;
 use Symfony\AI\Platform\Contract;
 use Symfony\AI\Platform\Message\AssistantMessage;
 use Symfony\AI\Platform\Message\Content\Text;
+use Symfony\AI\Platform\Message\Content\Thinking;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\ToolCall;
@@ -27,7 +28,7 @@ use Symfony\Component\Serializer\Serializer;
 class AssistantMessageNormalizerTest extends TestCase
 {
     /**
-     * @param array{role: 'assistant', type: 'message', content: ?string} $expected
+     * @param list<array<string, mixed>> $expected
      */
     #[DataProvider('normalizeProvider')]
     public function testNormalize(AssistantMessage $message, array $expected)
@@ -44,11 +45,11 @@ class AssistantMessageNormalizerTest extends TestCase
         $message = Message::ofAssistant('Foo');
         yield 'without tool calls' => [
             $message,
-            [
+            [[
                 'role' => 'assistant',
                 'type' => 'message',
                 'content' => 'Foo',
-            ],
+            ]],
         ];
 
         $toolCall = new ToolCall('some-id', 'roll-die', ['sides' => 24]);
@@ -62,6 +63,55 @@ class AssistantMessageNormalizerTest extends TestCase
                     'type' => 'function_call',
                 ],
             ],
+        ];
+
+        $reasoningItem = [
+            'type' => 'reasoning',
+            'id' => 'rs_1',
+            'summary' => [['type' => 'summary_text', 'text' => 'Pondering.']],
+            'encrypted_content' => 'gAAAAA-encrypted',
+        ];
+        yield 'reasoning items are replayed before tool calls' => [
+            Message::ofAssistant(new Thinking('Pondering.', json_encode($reasoningItem)), $toolCall),
+            [
+                $reasoningItem,
+                [
+                    'arguments' => json_encode($toolCall->getArguments()),
+                    'call_id' => $toolCall->getId(),
+                    'name' => $toolCall->getName(),
+                    'type' => 'function_call',
+                ],
+            ],
+        ];
+
+        yield 'reasoning items are replayed before the message' => [
+            Message::ofAssistant(new Thinking('Pondering.', json_encode($reasoningItem)), new Text('Foo')),
+            [
+                $reasoningItem,
+                [
+                    'role' => 'assistant',
+                    'type' => 'message',
+                    'content' => 'Foo',
+                ],
+            ],
+        ];
+
+        yield 'thinking without signature is not replayed' => [
+            Message::ofAssistant(new Thinking('Pondering.'), new Text('Foo')),
+            [[
+                'role' => 'assistant',
+                'type' => 'message',
+                'content' => 'Foo',
+            ]],
+        ];
+
+        yield 'non-reasoning signature is ignored' => [
+            Message::ofAssistant(new Thinking('Pondering.', 'anthropic-opaque-signature'), new Text('Foo')),
+            [[
+                'role' => 'assistant',
+                'type' => 'message',
+                'content' => 'Foo',
+            ]],
         ];
     }
 

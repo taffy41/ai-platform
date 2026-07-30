@@ -5,6 +5,7 @@ CHANGELOG
 ----
 
  * Throw `ServerException` when an OpenAI response reports that the server is overloaded
+ * Preserve reasoning items as thinking signatures and replay them on subsequent requests
 
 0.12
 ----
