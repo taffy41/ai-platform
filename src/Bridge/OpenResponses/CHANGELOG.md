@@ -7,6 +7,7 @@ CHANGELOG
  * Throw `ServerException` when an OpenAI response reports that the server is overloaded
  * Preserve reasoning items as thinking signatures and replay them on subsequent requests
  * Add `ToolCallStart` and `ToolInputDelta` deltas to streaming responses
+ * Add `CustomToolCallResult` for `custom_tool_call` output items, produced by remote tools like `x_search` in xAI
 
 0.12
 ----
