@@ -34,6 +34,7 @@ use Symfony\AI\Platform\Result\Stream\Delta\ThinkingComplete;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingDelta;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingStart;
 use Symfony\AI\Platform\Result\Stream\Delta\ToolCallComplete;
+use Symfony\AI\Platform\Result\Stream\Delta\ToolCallStart;
 use Symfony\AI\Platform\Result\StreamResult;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\ThinkingResult;
@@ -131,6 +132,9 @@ final class ResultConverter implements ResultConverterInterface
         // over several chunks) before the answer, so a thinking block may span multiple iterations.
         $thinking = null;
         $thinkingSignature = null;
+        // Tool calls are collected across the whole stream and completed once at its end, so that
+        // calls split over several parts or chunks arrive as a single batch.
+        $toolCalls = [];
 
         foreach ($result->getDataStream() as $data) {
             // Gemini repeats the reason on every candidate of the terminal chunk; the leading one wins,
@@ -189,6 +193,22 @@ final class ResultConverter implements ResultConverterInterface
                     $thinkingSignature = null;
                 }
 
+                // Gemini delivers each function call as a complete part, so a call is announced at the
+                // position its part appears in and batched into the terminal ToolCallComplete.
+                if ($leaf instanceof ToolCallResult) {
+                    foreach ($leaf->getContent() as $toolCall) {
+                        $toolCalls[] = $toolCall;
+
+                        // Gemini < 3.0 leaves the function call id empty; without one there is nothing
+                        // to correlate the announcement with, so the call is only batched.
+                        if ('' !== $toolCall->getId()) {
+                            yield new ToolCallStart($toolCall->getId(), $toolCall->getName());
+                        }
+                    }
+
+                    continue;
+                }
+
                 yield from $this->resultToDeltas($leaf);
             }
         }
@@ -196,6 +216,10 @@ final class ResultConverter implements ResultConverterInterface
         // A thinking block still open at the end of the stream is completed before the terminal metadata.
         if (null !== $thinking) {
             yield new ThinkingComplete($thinking, $thinkingSignature);
+        }
+
+        if ([] !== $toolCalls) {
+            yield new ToolCallComplete($toolCalls);
         }
 
         // Emitted last: the terminal chunk carries both the finish reason and its content parts.
@@ -255,6 +279,8 @@ final class ResultConverter implements ResultConverterInterface
 
                 return;
             case $result instanceof ToolCallResult:
+                // Only reached through the multi-candidate path: the single-candidate stream batches
+                // tool calls into one terminal ToolCallComplete instead.
                 yield new ToolCallComplete($result->getContent());
 
                 return;

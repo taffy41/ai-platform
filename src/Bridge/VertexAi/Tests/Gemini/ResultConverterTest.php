@@ -31,6 +31,7 @@ use Symfony\AI\Platform\Result\Stream\Delta\ThinkingComplete;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingDelta;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingStart;
 use Symfony\AI\Platform\Result\Stream\Delta\ToolCallComplete;
+use Symfony\AI\Platform\Result\Stream\Delta\ToolCallStart;
 use Symfony\AI\Platform\Result\StreamResult;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\ThinkingResult;
@@ -727,6 +728,62 @@ final class ResultConverterTest extends TestCase
         $this->assertSame('Calling tool.', $items[0]->getText());
         $this->assertInstanceOf(ToolCallComplete::class, $items[1]);
         $this->assertSame('search', $items[1]->getToolCalls()[0]->getName());
+    }
+
+    public function testStreamAnnouncesIdentifiedToolCallsAndBatchesThemIntoASingleCompletion()
+    {
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn(200);
+
+        $rawResult = $this->createStub(RawResultInterface::class);
+        $rawResult->method('getObject')->willReturn($response);
+        $rawResult->method('getDataStream')->willReturn((static function (): \Generator {
+            yield [
+                'candidates' => [
+                    ['content' => ['parts' => [
+                        ['functionCall' => ['id' => 'call_1', 'name' => 'search', 'args' => ['q' => 'x']]],
+                        ['text' => 'and now the weather', 'thought' => true, 'thoughtSignature' => 'sig'],
+                        ['functionCall' => ['id' => 'call_2', 'name' => 'weather', 'args' => ['city' => 'Berlin']]],
+                    ]]],
+                ],
+            ];
+        })());
+
+        $items = iterator_to_array((new ResultConverter())->convert($rawResult, ['stream' => true])->getContent());
+
+        $this->assertCount(6, $items);
+        $this->assertInstanceOf(ToolCallStart::class, $items[0]);
+        $this->assertSame('call_1', $items[0]->getId());
+        $this->assertInstanceOf(ThinkingStart::class, $items[1]);
+        $this->assertInstanceOf(ThinkingDelta::class, $items[2]);
+        $this->assertInstanceOf(ThinkingComplete::class, $items[3]);
+        $this->assertInstanceOf(ToolCallStart::class, $items[4]);
+        $this->assertSame('call_2', $items[4]->getId());
+
+        // Both calls arrive as one batch, instead of one completion per functionCall part
+        $this->assertInstanceOf(ToolCallComplete::class, $items[5]);
+        $toolCalls = $items[5]->getToolCalls();
+        $this->assertCount(2, $toolCalls);
+        $this->assertSame('call_1', $toolCalls[0]->getId());
+        $this->assertSame('call_2', $toolCalls[1]->getId());
+    }
+
+    public function testStreamOmitsToolCallStartForUnidentifiedCalls()
+    {
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn(200);
+
+        $rawResult = $this->createStub(RawResultInterface::class);
+        $rawResult->method('getObject')->willReturn($response);
+        $rawResult->method('getDataStream')->willReturn((static function (): \Generator {
+            yield ['candidates' => [['content' => ['parts' => [['functionCall' => ['name' => 'search', 'args' => []]]]]]]];
+        })());
+
+        $items = iterator_to_array((new ResultConverter())->convert($rawResult, ['stream' => true])->getContent());
+
+        $this->assertCount(1, $items);
+        $this->assertInstanceOf(ToolCallComplete::class, $items[0]);
+        $this->assertSame('', $items[0]->getToolCalls()[0]->getId());
     }
 
     public function testThrowsServerExceptionOnServerErrorStatusBeforeStreaming()
