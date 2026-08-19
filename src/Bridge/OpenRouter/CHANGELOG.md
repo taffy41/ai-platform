@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.13
+----
+
+ * Add configurable `$baseUrl` constructor parameter to `ModelApiCatalog`
+
 0.11
 ----
 

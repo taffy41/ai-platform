@@ -254,6 +254,33 @@ final class ModelApiCatalogTest extends TestCase
         $this->assertSame(Capability::cases(), $model->getCapabilities());
     }
 
+    public function testItUsesTheConfiguredBaseUrl()
+    {
+        $modelsResponse = new JsonMockResponse([
+            'data' => [
+                [
+                    'id' => 'anthropic/claude-3-opus',
+                    'architecture' => [
+                        'input_modalities' => ['text'],
+                        'output_modalities' => ['text'],
+                    ],
+                ],
+            ],
+        ]);
+        $embeddingsResponse = new JsonMockResponse([
+            'data' => [],
+        ]);
+
+        $httpClient = new MockHttpClient([$modelsResponse, $embeddingsResponse]);
+
+        $catalog = new ModelApiCatalog($httpClient, 'https://gateway.internal/api/');
+        $catalog->getModels();
+
+        $this->assertSame(2, $httpClient->getRequestsCount());
+        $this->assertSame('https://gateway.internal/api/v1/models', $modelsResponse->getRequestUrl());
+        $this->assertSame('https://gateway.internal/api/v1/embeddings/models', $embeddingsResponse->getRequestUrl());
+    }
+
     public function testAutoRouterModelStillWorksWithApiCatalog()
     {
         $httpClient = new MockHttpClient([

@@ -25,9 +25,14 @@ final class ModelApiCatalog extends AbstractOpenRouterModelCatalog
 {
     protected bool $modelsAreLoaded = false;
 
+    private readonly string $baseUrl;
+
     public function __construct(
         private readonly HttpClientInterface $httpClient,
+        string $baseUrl = 'https://openrouter.ai/api',
     ) {
+        $this->baseUrl = rtrim($baseUrl, '/');
+
         parent::__construct();
     }
 
@@ -63,7 +68,7 @@ final class ModelApiCatalog extends AbstractOpenRouterModelCatalog
      */
     protected function fetchRemoteModels(): iterable
     {
-        $responseModels = $this->httpClient->request('GET', 'https://openrouter.ai/api/v1/models');
+        $responseModels = $this->httpClient->request('GET', $this->baseUrl.'/v1/models');
         foreach ($responseModels->toArray()['data'] as $model) {
             $capabilities = [];
 
@@ -128,7 +133,7 @@ final class ModelApiCatalog extends AbstractOpenRouterModelCatalog
      */
     protected function fetchRemoteEmbeddings(): iterable
     {
-        $responseEmbeddings = $this->httpClient->request('GET', 'https://openrouter.ai/api/v1/embeddings/models');
+        $responseEmbeddings = $this->httpClient->request('GET', $this->baseUrl.'/v1/embeddings/models');
         foreach ($responseEmbeddings->toArray()['data'] as $embedding) {
             yield $embedding['id'] => [
                 'class' => EmbeddingsModel::class,
