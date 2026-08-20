@@ -90,23 +90,7 @@ trait CompletionsConversionTrait
                 yield new ToolCallComplete(array_map($this->convertToolCall(...), $toolCalls));
             }
 
-            $reasoningContent = $data['choices'][0]['delta']['reasoning_content']
-                ?? $data['choices'][0]['delta']['reasoning'] ?? null;
-            if (null !== $reasoningContent && '' !== $reasoningContent) {
-                $reasoning .= $reasoningContent;
-                yield new ThinkingDelta($reasoningContent);
-            }
-
-            if ('' !== $reasoning && isset($data['choices'][0]['delta']['content']) && '' !== $data['choices'][0]['delta']['content']) {
-                yield new ThinkingComplete($reasoning);
-                $reasoning = '';
-            }
-
-            if (!isset($data['choices'][0]['delta']['content'])) {
-                continue;
-            }
-
-            yield new TextDelta($data['choices'][0]['delta']['content']);
+            $reasoning = yield from $this->yieldContentDeltas($data['choices'][0]['delta'] ?? [], $reasoning);
         }
 
         if ('' !== $reasoning) {
@@ -122,6 +106,32 @@ trait CompletionsConversionTrait
         if (null !== $finishReason) {
             yield new MetadataDelta('finish_reason', $finishReason);
         }
+    }
+
+    /**
+     * @param array<string, mixed> $delta     The `choices[0].delta` payload
+     * @param string               $reasoning Reasoning accumulated by the previous chunks
+     *
+     * @return \Generator<int, ThinkingDelta|ThinkingComplete|TextDelta, mixed, string> Yields the content deltas; returns the updated reasoning
+     */
+    protected function yieldContentDeltas(array $delta, string $reasoning): \Generator
+    {
+        $reasoningContent = $delta['reasoning_content'] ?? $delta['reasoning'] ?? null;
+        if (null !== $reasoningContent && '' !== $reasoningContent) {
+            $reasoning .= $reasoningContent;
+            yield new ThinkingDelta($reasoningContent);
+        }
+
+        if ('' !== $reasoning && isset($delta['content']) && '' !== $delta['content']) {
+            yield new ThinkingComplete($reasoning);
+            $reasoning = '';
+        }
+
+        if (isset($delta['content'])) {
+            yield new TextDelta($delta['content']);
+        }
+
+        return $reasoning;
     }
 
     /**
