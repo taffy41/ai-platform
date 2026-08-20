@@ -25,6 +25,8 @@ use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Result\Stream\Delta\MetadataDelta;
 use Symfony\AI\Platform\Result\Stream\Delta\TextDelta;
 use Symfony\AI\Platform\Result\Stream\Delta\ToolCallComplete;
+use Symfony\AI\Platform\Result\Stream\Delta\ToolCallStart;
+use Symfony\AI\Platform\Result\Stream\Delta\ToolInputDelta;
 use Symfony\AI\Platform\Result\StreamResult;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\ToolCall;
@@ -115,13 +117,19 @@ final class ResultConverter implements ResultConverterInterface
             if ('tool-call-start' === $type) {
                 $toolCall = $data['delta']['message']['tool_calls'] ?? null;
                 if (null !== $toolCall) {
+                    $id = $toolCall['id'] ?? '';
+                    $name = $toolCall['function']['name'] ?? '';
                     $toolCalls[] = [
-                        'id' => $toolCall['id'] ?? '',
+                        'id' => $id,
                         'function' => [
-                            'name' => $toolCall['function']['name'] ?? '',
+                            'name' => $name,
                             'arguments' => $toolCall['function']['arguments'] ?? '',
                         ],
                     ];
+
+                    if ('' !== $id) {
+                        yield new ToolCallStart($id, $name);
+                    }
                 }
                 continue;
             }
@@ -129,7 +137,12 @@ final class ResultConverter implements ResultConverterInterface
             if ('tool-call-delta' === $type) {
                 if ([] !== $toolCalls) {
                     $lastIndex = \count($toolCalls) - 1;
-                    $toolCalls[$lastIndex]['function']['arguments'] .= $data['delta']['message']['tool_calls']['function']['arguments'] ?? '';
+                    $partialJson = $data['delta']['message']['tool_calls']['function']['arguments'] ?? '';
+                    $toolCalls[$lastIndex]['function']['arguments'] .= $partialJson;
+
+                    if ('' !== $partialJson && '' !== $toolCalls[$lastIndex]['id']) {
+                        yield new ToolInputDelta($toolCalls[$lastIndex]['id'], $toolCalls[$lastIndex]['function']['name'], $partialJson);
+                    }
                 }
                 continue;
             }

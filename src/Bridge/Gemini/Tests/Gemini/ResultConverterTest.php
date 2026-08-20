@@ -32,6 +32,7 @@ use Symfony\AI\Platform\Result\Stream\Delta\ThinkingComplete;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingDelta;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingStart;
 use Symfony\AI\Platform\Result\Stream\Delta\ToolCallComplete;
+use Symfony\AI\Platform\Result\Stream\Delta\ToolCallStart;
 use Symfony\AI\Platform\Result\StreamResult;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\ThinkingResult;
@@ -501,6 +502,64 @@ final class ResultConverterTest extends TestCase
         $this->assertSame('search', $items[1]->getToolCalls()[0]->getName());
     }
 
+    public function testStreamBatchesParallelToolCallsIntoASingleCompletion()
+    {
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
+        $rawResult = $this->createMock(RawResultInterface::class);
+        $rawResult->method('getObject')->willReturn($httpResponse);
+        $rawResult->method('getDataStream')->willReturn((static function (): \Generator {
+            yield [
+                'candidates' => [
+                    ['content' => ['parts' => [
+                        ['functionCall' => ['id' => 'call_1', 'name' => 'search', 'args' => ['q' => 'x']]],
+                        ['text' => 'and now the weather', 'thought' => true, 'thoughtSignature' => 'sig'],
+                        ['functionCall' => ['id' => 'call_2', 'name' => 'weather', 'args' => ['city' => 'Berlin']]],
+                    ]]],
+                ],
+            ];
+        })());
+
+        $items = iterator_to_array($converter->convert($rawResult, ['stream' => true])->getContent());
+
+        $this->assertInstanceOf(ToolCallStart::class, $items[0]);
+        $this->assertSame('call_1', $items[0]->getId());
+        $this->assertInstanceOf(ThinkingStart::class, $items[1]);
+        $this->assertInstanceOf(ThinkingDelta::class, $items[2]);
+        $this->assertInstanceOf(ThinkingComplete::class, $items[3]);
+        $this->assertInstanceOf(ToolCallStart::class, $items[4]);
+        $this->assertSame('call_2', $items[4]->getId());
+
+        // Both calls arrive as one batch, instead of one completion per functionCall part
+        $this->assertInstanceOf(ToolCallComplete::class, $items[5]);
+        $toolCalls = $items[5]->getToolCalls();
+        $this->assertCount(2, $toolCalls);
+        $this->assertSame('call_1', $toolCalls[0]->getId());
+        $this->assertSame('call_2', $toolCalls[1]->getId());
+        $this->assertCount(6, $items);
+    }
+
+    public function testStreamOmitsToolCallStartForUnidentifiedCalls()
+    {
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
+        $rawResult = $this->createMock(RawResultInterface::class);
+        $rawResult->method('getObject')->willReturn($httpResponse);
+        $rawResult->method('getDataStream')->willReturn((static function (): \Generator {
+            yield ['candidates' => [['content' => ['parts' => [['functionCall' => ['name' => 'search', 'args' => []]]]]]]];
+        })());
+
+        $items = iterator_to_array($converter->convert($rawResult, ['stream' => true])->getContent());
+
+        $this->assertCount(1, $items);
+        $this->assertInstanceOf(ToolCallComplete::class, $items[0]);
+        $this->assertSame('', $items[0]->getToolCalls()[0]->getId());
+    }
+
     public function testStreamSkipsCandidatesWithoutContentParts()
     {
         $converter = new ResultConverter();
@@ -575,6 +634,19 @@ final class ResultConverterTest extends TestCase
         $result = $converter->convert($rawResult, ['stream' => true]);
         $items = iterator_to_array($result->getContent());
 
+        // An identified tool call is announced at its position and completed at the end of the stream.
+        if (ToolCallComplete::class === $expectedClass) {
+            $this->assertCount(2, $items);
+            $this->assertInstanceOf(ToolCallStart::class, $items[0]);
+            $this->assertSame($expectedPayload['id'], $items[0]->getId());
+            $this->assertSame($expectedPayload['name'], $items[0]->getName());
+            $this->assertInstanceOf(ToolCallComplete::class, $items[1]);
+            $this->assertSame($expectedPayload['id'], $items[1]->getToolCalls()[0]->getId());
+            $this->assertSame($expectedPayload['name'], $items[1]->getToolCalls()[0]->getName());
+
+            return;
+        }
+
         $this->assertCount(1, $items);
         $this->assertInstanceOf($expectedClass, $items[0]);
 
@@ -587,13 +659,6 @@ final class ResultConverterTest extends TestCase
         if (BinaryDelta::class === $expectedClass) {
             $this->assertSame($expectedPayload['data'], $items[0]->getData());
             $this->assertSame($expectedPayload['mimeType'], $items[0]->getMimeType());
-
-            return;
-        }
-
-        if (ToolCallComplete::class === $expectedClass) {
-            $this->assertSame($expectedPayload['id'], $items[0]->getToolCalls()[0]->getId());
-            $this->assertSame($expectedPayload['name'], $items[0]->getToolCalls()[0]->getName());
 
             return;
         }

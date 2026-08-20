@@ -46,6 +46,8 @@ use Symfony\AI\Platform\Result\Stream\Delta\ThinkingDelta;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingSignature;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingStart;
 use Symfony\AI\Platform\Result\Stream\Delta\ToolCallComplete;
+use Symfony\AI\Platform\Result\Stream\Delta\ToolCallStart;
+use Symfony\AI\Platform\Result\Stream\Delta\ToolInputDelta;
 use Symfony\AI\Platform\Result\StreamResult;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\ThinkingResult;
@@ -1165,6 +1167,216 @@ final class ResultConverterTest extends TestCase
         $this->assertSame('call_456', $toolCalls[0]->getId());
         $this->assertSame('get_weather', $toolCalls[0]->getName());
         $this->assertSame(['city' => 'Berlin'], $toolCalls[0]->getArguments());
+    }
+
+    public function testStreamAnnouncesToolCallsAndStreamsTheirArguments()
+    {
+        $converter = new ResultConverter();
+
+        $httpResponse = $this->createStub(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
+        $events = [
+            [
+                'type' => 'response.output_item.added',
+                'item' => [
+                    'type' => 'function_call',
+                    'id' => 'fc_1',
+                    'call_id' => 'call_1',
+                    'name' => 'get_weather',
+                    'arguments' => '',
+                ],
+            ],
+            ['type' => 'response.function_call_arguments.delta', 'item_id' => 'fc_1', 'delta' => '{"city":'],
+            ['type' => 'response.function_call_arguments.delta', 'item_id' => 'fc_1', 'delta' => '"Berlin"}'],
+            [
+                'type' => 'response.output_item.done',
+                'item' => [
+                    'type' => 'function_call',
+                    'id' => 'fc_1',
+                    'call_id' => 'call_1',
+                    'name' => 'get_weather',
+                    'arguments' => '{"city": "Berlin"}',
+                ],
+            ],
+            ['type' => 'response.completed', 'response' => ['output' => []]],
+        ];
+
+        $chunks = iterator_to_array($converter->convert(new InMemoryRawResult([], $events, $httpResponse), ['stream' => true])->getContent());
+
+        $this->assertCount(5, $chunks);
+
+        $this->assertInstanceOf(ToolCallStart::class, $chunks[0]);
+        $this->assertSame('call_1', $chunks[0]->getId());
+        $this->assertSame('get_weather', $chunks[0]->getName());
+
+        $this->assertInstanceOf(ToolInputDelta::class, $chunks[1]);
+        $this->assertSame('call_1', $chunks[1]->getId());
+        $this->assertSame('get_weather', $chunks[1]->getName());
+        $this->assertSame('{"city":', $chunks[1]->getPartialJson());
+
+        $this->assertInstanceOf(ToolInputDelta::class, $chunks[2]);
+        $this->assertSame('"Berlin"}', $chunks[2]->getPartialJson());
+
+        $this->assertInstanceOf(ToolCallComplete::class, $chunks[3]);
+        $this->assertSame('call_1', $chunks[3]->getToolCalls()[0]->getId());
+        $this->assertInstanceOf(MetadataDelta::class, $chunks[4]);
+    }
+
+    public function testStreamAnnouncesToolCallsWithoutCallIdAndStreamsTheirArguments()
+    {
+        $converter = new ResultConverter();
+
+        $httpResponse = $this->createStub(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
+        $events = [
+            [
+                'type' => 'response.output_item.added',
+                'item' => [
+                    'type' => 'function_call',
+                    'id' => 'fc_1',
+                    'name' => 'get_weather',
+                    'arguments' => '',
+                ],
+            ],
+            ['type' => 'response.function_call_arguments.delta', 'item_id' => 'fc_1', 'delta' => '{"city":'],
+            ['type' => 'response.function_call_arguments.delta', 'item_id' => 'fc_1', 'delta' => '"Berlin"}'],
+            [
+                'type' => 'response.output_item.done',
+                'item' => [
+                    'type' => 'function_call',
+                    'id' => 'fc_1',
+                    'name' => 'get_weather',
+                    'arguments' => '{"city": "Berlin"}',
+                ],
+            ],
+            ['type' => 'response.completed', 'response' => ['output' => []]],
+        ];
+
+        $chunks = iterator_to_array($converter->convert(new InMemoryRawResult([], $events, $httpResponse), ['stream' => true])->getContent());
+
+        $this->assertCount(5, $chunks);
+
+        // Without a "call_id" the output item id addresses the call, so it is used all the way through
+        $this->assertInstanceOf(ToolCallStart::class, $chunks[0]);
+        $this->assertSame('fc_1', $chunks[0]->getId());
+        $this->assertSame('get_weather', $chunks[0]->getName());
+
+        $this->assertInstanceOf(ToolInputDelta::class, $chunks[1]);
+        $this->assertSame('fc_1', $chunks[1]->getId());
+        $this->assertSame('{"city":', $chunks[1]->getPartialJson());
+
+        $this->assertInstanceOf(ToolInputDelta::class, $chunks[2]);
+        $this->assertSame('"Berlin"}', $chunks[2]->getPartialJson());
+
+        $this->assertInstanceOf(ToolCallComplete::class, $chunks[3]);
+        $this->assertSame('fc_1', $chunks[3]->getToolCalls()[0]->getId());
+        $this->assertInstanceOf(MetadataDelta::class, $chunks[4]);
+    }
+
+    public function testStreamAnnouncesCallIdOnlyToolCallsWithoutStreamingTheirArguments()
+    {
+        $converter = new ResultConverter();
+
+        $httpResponse = $this->createStub(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
+        // Providers that only send "call_id" leave the output item without an id, so the argument
+        // deltas keep addressing an item id that was never announced and cannot be mapped back
+        $events = [
+            [
+                'type' => 'response.output_item.added',
+                'item' => [
+                    'type' => 'function_call',
+                    'id' => null,
+                    'call_id' => 'call_789',
+                    'name' => 'get_weather',
+                    'arguments' => '',
+                ],
+            ],
+            ['type' => 'response.function_call_arguments.delta', 'item_id' => 'fc_1', 'delta' => '{"city":'],
+            ['type' => 'response.function_call_arguments.delta', 'item_id' => 'fc_1', 'delta' => '"Berlin"}'],
+            [
+                'type' => 'response.output_item.done',
+                'item' => [
+                    'type' => 'function_call',
+                    'id' => null,
+                    'call_id' => 'call_789',
+                    'name' => 'get_weather',
+                    'arguments' => '{"city": "Berlin"}',
+                ],
+            ],
+            ['type' => 'response.completed', 'response' => ['output' => []]],
+        ];
+
+        $chunks = iterator_to_array($converter->convert(new InMemoryRawResult([], $events, $httpResponse), ['stream' => true])->getContent());
+
+        // The call is still announced and completed under its call id, only the arguments stay silent
+        $this->assertCount(3, $chunks);
+
+        $this->assertInstanceOf(ToolCallStart::class, $chunks[0]);
+        $this->assertSame('call_789', $chunks[0]->getId());
+        $this->assertSame('get_weather', $chunks[0]->getName());
+
+        $this->assertInstanceOf(ToolCallComplete::class, $chunks[1]);
+        $this->assertSame('call_789', $chunks[1]->getToolCalls()[0]->getId());
+        $this->assertSame(['city' => 'Berlin'], $chunks[1]->getToolCalls()[0]->getArguments());
+
+        $this->assertInstanceOf(MetadataDelta::class, $chunks[2]);
+        $this->assertTrue($chunks[2]->getValue()->is(FinishReasonCase::TOOL_CALL));
+    }
+
+    public function testStreamKeepsReasoningItemsAndToolCallsInOrder()
+    {
+        $converter = new ResultConverter();
+
+        $httpResponse = $this->createStub(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
+        $firstReasoning = ['type' => 'reasoning', 'id' => 'rs_1', 'summary' => [], 'encrypted_content' => 'enc_1'];
+        $secondReasoning = ['type' => 'reasoning', 'id' => 'rs_2', 'summary' => [], 'encrypted_content' => 'enc_2'];
+
+        $events = [
+            ['type' => 'response.output_item.done', 'item' => $firstReasoning],
+            [
+                'type' => 'response.output_item.added',
+                'item' => ['type' => 'function_call', 'id' => 'fc_1', 'call_id' => 'call_1', 'name' => 'get_weather', 'arguments' => ''],
+            ],
+            [
+                'type' => 'response.output_item.done',
+                'item' => ['type' => 'function_call', 'id' => 'fc_1', 'call_id' => 'call_1', 'name' => 'get_weather', 'arguments' => '{}'],
+            ],
+            ['type' => 'response.output_item.done', 'item' => $secondReasoning],
+            [
+                'type' => 'response.output_item.added',
+                'item' => ['type' => 'function_call', 'id' => 'fc_2', 'call_id' => 'call_2', 'name' => 'get_time', 'arguments' => ''],
+            ],
+            [
+                'type' => 'response.output_item.done',
+                'item' => ['type' => 'function_call', 'id' => 'fc_2', 'call_id' => 'call_2', 'name' => 'get_time', 'arguments' => '{}'],
+            ],
+            ['type' => 'response.completed', 'response' => ['output' => []]],
+        ];
+
+        $chunks = iterator_to_array($converter->convert(new InMemoryRawResult([], $events, $httpResponse), ['stream' => true])->getContent());
+
+        // The reasoning item belonging to a call is replayable in front of it, which the
+        // Responses API requires when the reasoning is sent back with "store" => false
+        $this->assertInstanceOf(ThinkingSignature::class, $chunks[0]);
+        $this->assertSame(json_encode($firstReasoning), $chunks[0]->getSignature());
+        $this->assertInstanceOf(ToolCallStart::class, $chunks[1]);
+        $this->assertSame('call_1', $chunks[1]->getId());
+        $this->assertInstanceOf(ThinkingSignature::class, $chunks[2]);
+        $this->assertSame(json_encode($secondReasoning), $chunks[2]->getSignature());
+        $this->assertInstanceOf(ToolCallStart::class, $chunks[3]);
+        $this->assertSame('call_2', $chunks[3]->getId());
+
+        $this->assertInstanceOf(ToolCallComplete::class, $chunks[4]);
+        $toolCalls = $chunks[4]->getToolCalls();
+        $this->assertCount(2, $toolCalls);
+        $this->assertSame('call_1', $toolCalls[0]->getId());
+        $this->assertSame('call_2', $toolCalls[1]->getId());
     }
 
     public function testStreamThrowsClearExceptionForMalformedToolCallArguments()

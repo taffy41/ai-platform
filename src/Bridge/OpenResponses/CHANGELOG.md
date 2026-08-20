@@ -6,6 +6,7 @@ CHANGELOG
 
  * Throw `ServerException` when an OpenAI response reports that the server is overloaded
  * Preserve reasoning items as thinking signatures and replay them on subsequent requests
+ * Add `ToolCallStart` and `ToolInputDelta` deltas to streaming responses
 
 0.12
 ----

@@ -23,6 +23,8 @@ use Symfony\AI\Platform\Result\InMemoryRawResult;
 use Symfony\AI\Platform\Result\RawHttpResult;
 use Symfony\AI\Platform\Result\Stream\Delta\TextDelta;
 use Symfony\AI\Platform\Result\Stream\Delta\ToolCallComplete;
+use Symfony\AI\Platform\Result\Stream\Delta\ToolCallStart;
+use Symfony\AI\Platform\Result\Stream\Delta\ToolInputDelta;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\AI\Platform\Result\ToolCallResult;
@@ -202,9 +204,22 @@ final class ResultConverterTest extends TestCase
         );
 
         $chunks = iterator_to_array($result->getContent(), false);
-        $this->assertCount(1, $chunks);
-        $this->assertInstanceOf(ToolCallComplete::class, $chunks[0]);
-        $toolCalls = $chunks[0]->getToolCalls();
+        $this->assertCount(4, $chunks);
+
+        $this->assertInstanceOf(ToolCallStart::class, $chunks[0]);
+        $this->assertSame('call_1', $chunks[0]->getId());
+        $this->assertSame('get_time', $chunks[0]->getName());
+
+        $this->assertInstanceOf(ToolInputDelta::class, $chunks[1]);
+        $this->assertSame('call_1', $chunks[1]->getId());
+        $this->assertSame('get_time', $chunks[1]->getName());
+        $this->assertSame('{"tz":', $chunks[1]->getPartialJson());
+
+        $this->assertInstanceOf(ToolInputDelta::class, $chunks[2]);
+        $this->assertSame('"UTC"}', $chunks[2]->getPartialJson());
+
+        $this->assertInstanceOf(ToolCallComplete::class, $chunks[3]);
+        $toolCalls = $chunks[3]->getToolCalls();
         $this->assertSame('call_1', $toolCalls[0]->getId());
         $this->assertSame('get_time', $toolCalls[0]->getName());
         $this->assertSame(['tz' => 'UTC'], $toolCalls[0]->getArguments());
@@ -255,12 +270,71 @@ final class ResultConverterTest extends TestCase
         );
 
         $chunks = iterator_to_array($result->getContent(), false);
-        $this->assertCount(1, $chunks);
-        $this->assertInstanceOf(ToolCallComplete::class, $chunks[0]);
-        $toolCalls = $chunks[0]->getToolCalls();
+        $this->assertCount(2, $chunks);
+        $this->assertInstanceOf(ToolCallStart::class, $chunks[0]);
+        $this->assertSame('call_1', $chunks[0]->getId());
+        $this->assertInstanceOf(ToolCallComplete::class, $chunks[1]);
+        $toolCalls = $chunks[1]->getToolCalls();
         $this->assertSame('call_1', $toolCalls[0]->getId());
         $this->assertSame('get_time', $toolCalls[0]->getName());
         $this->assertSame([], $toolCalls[0]->getArguments());
+    }
+
+    public function testItDoesNotAnnounceStreamedToolCallWithoutId()
+    {
+        $httpResponse = $this->createStub(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
+        $converter = new ResultConverter();
+        $result = $converter->convert(
+            new InMemoryRawResult([], [
+                ['type' => 'tool-call-start', 'delta' => ['message' => ['tool_calls' => ['function' => ['name' => 'get_time', 'arguments' => '']]]]],
+                ['type' => 'tool-call-delta', 'delta' => ['message' => ['tool_calls' => ['function' => ['arguments' => '{"tz":']]]]],
+                ['type' => 'tool-call-delta', 'delta' => ['message' => ['tool_calls' => ['function' => ['arguments' => '"UTC"}']]]]],
+                ['type' => 'message-end', 'delta' => []],
+            ], $httpResponse),
+            ['stream' => true],
+        );
+
+        $chunks = iterator_to_array($result->getContent(), false);
+        $this->assertCount(1, $chunks);
+
+        $this->assertInstanceOf(ToolCallComplete::class, $chunks[0]);
+        $toolCalls = $chunks[0]->getToolCalls();
+        $this->assertCount(1, $toolCalls);
+        $this->assertSame('', $toolCalls[0]->getId());
+        $this->assertSame('get_time', $toolCalls[0]->getName());
+        $this->assertSame(['tz' => 'UTC'], $toolCalls[0]->getArguments());
+    }
+
+    public function testItSkipsToolInputDeltaWithoutPartialJson()
+    {
+        $httpResponse = $this->createStub(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
+        $converter = new ResultConverter();
+        $result = $converter->convert(
+            new InMemoryRawResult([], [
+                ['type' => 'tool-call-start', 'delta' => ['message' => ['tool_calls' => ['id' => 'call_1', 'function' => ['name' => 'get_time', 'arguments' => '']]]]],
+                ['type' => 'tool-call-delta', 'delta' => ['message' => ['tool_calls' => ['function' => []]]]],
+                ['type' => 'tool-call-delta', 'delta' => ['message' => ['tool_calls' => ['function' => ['arguments' => '{"tz":"UTC"}']]]]],
+                ['type' => 'message-end', 'delta' => []],
+            ], $httpResponse),
+            ['stream' => true],
+        );
+
+        $chunks = iterator_to_array($result->getContent(), false);
+        $this->assertCount(3, $chunks);
+
+        $this->assertInstanceOf(ToolCallStart::class, $chunks[0]);
+        $this->assertSame('call_1', $chunks[0]->getId());
+
+        $this->assertInstanceOf(ToolInputDelta::class, $chunks[1]);
+        $this->assertSame('{"tz":"UTC"}', $chunks[1]->getPartialJson());
+
+        $this->assertInstanceOf(ToolCallComplete::class, $chunks[2]);
+        $toolCalls = $chunks[2]->getToolCalls();
+        $this->assertSame(['tz' => 'UTC'], $toolCalls[0]->getArguments());
     }
 
     public function testItThrowsIncompleteStreamWhenMessageEndIsMissing()

@@ -42,6 +42,8 @@ use Symfony\AI\Platform\Result\Stream\Delta\ThinkingDelta;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingSignature;
 use Symfony\AI\Platform\Result\Stream\Delta\ThinkingStart;
 use Symfony\AI\Platform\Result\Stream\Delta\ToolCallComplete;
+use Symfony\AI\Platform\Result\Stream\Delta\ToolCallStart;
+use Symfony\AI\Platform\Result\Stream\Delta\ToolInputDelta;
 use Symfony\AI\Platform\Result\StreamResult;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\ThinkingResult;
@@ -436,6 +438,10 @@ class ResultConverter implements ResultConverterInterface
         $currentThinking = null;
         /** @var array<string, ToolCall> $toolCalls */
         $toolCalls = [];
+        // Announced function calls, keyed by output item id, so the argument deltas of an item
+        // can be attributed to the call id that ToolCallStart was emitted with
+        /** @var array<string, array{id: string, name: string}> $announcedToolCalls */
+        $announcedToolCalls = [];
         $sawResponseEvent = false;
         $sawResponseCompleted = false;
         $sawToolCallComplete = false;
@@ -508,6 +514,33 @@ class ResultConverter implements ResultConverterInterface
             if ('response.reasoning_summary_text.done' === $type) {
                 yield new ThinkingComplete($currentThinking ?? '');
                 $currentThinking = null;
+            }
+
+            // A function call is announced before its arguments stream, which pins its position
+            // relative to the reasoning items and message content around it
+            if ('response.output_item.added' === $type && \is_array($event['item'] ?? null) && 'function_call' === ($event['item']['type'] ?? null)) {
+                /** @var FunctionCall $item */
+                $item = $event['item'];
+                $id = $item['call_id'] ?? $item['id'] ?? null;
+                $name = $item['name'] ?? null;
+
+                if (null !== $id && '' !== $id && null !== $name) {
+                    if (isset($item['id']) && '' !== $item['id']) {
+                        $announcedToolCalls[$item['id']] = ['id' => $id, 'name' => $name];
+                    }
+
+                    yield new ToolCallStart($id, $name);
+                }
+            }
+
+            // Argument deltas address the output item, not the call, so they are mapped back
+            // onto the announced call id; unannounced items stay silent until output_item.done
+            if ('response.function_call_arguments.delta' === $type && \is_string($event['delta'] ?? null)) {
+                $announced = $announcedToolCalls[$event['item_id'] ?? ''] ?? null;
+
+                if (null !== $announced) {
+                    yield new ToolInputDelta($announced['id'], $announced['name'], $event['delta']);
+                }
             }
 
             if ('response.output_item.done' === $type && \is_array($event['item'] ?? null) && 'function_call' === ($event['item']['type'] ?? null)) {

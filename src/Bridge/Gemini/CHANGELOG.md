@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+0.13
+----
+
+ * [BC BREAK] Streamed tool calls are completed once at the end of the stream, instead of one `ToolCallComplete` delta per `functionCall` part
+ * Add `ToolCallStart` deltas to streaming responses for function calls the API identifies
+
 0.11
 ----
 
