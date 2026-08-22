@@ -29,6 +29,7 @@ use Symfony\AI\Platform\FinishReason\FinishReasonCase;
 use Symfony\AI\Platform\Result\BinaryResult;
 use Symfony\AI\Platform\Result\CodeExecutionResult;
 use Symfony\AI\Platform\Result\ComputerCallResult;
+use Symfony\AI\Platform\Result\CustomToolCallResult;
 use Symfony\AI\Platform\Result\ExecutableCodeResult;
 use Symfony\AI\Platform\Result\FileSearchResult;
 use Symfony\AI\Platform\Result\InMemoryRawResult;
@@ -152,6 +153,150 @@ final class ResultConverterTest extends TestCase
         $this->assertSame('call_789', $toolCalls[0]->getId());
         $this->assertSame('test_function', $toolCalls[0]->getName());
         $this->assertSame(['arg1' => 'value1'], $toolCalls[0]->getArguments());
+    }
+
+    public function testConvertCustomToolCallResult()
+    {
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $httpResponse->method('toArray')->willReturn([
+            'output' => [
+                [
+                    'type' => 'custom_tool_call',
+                    'id' => 'ctc_123',
+                    'call_id' => 'call_123',
+                    'name' => 'x_keyword_search',
+                    'input' => '{"query": "BETR stock"}',
+                    'status' => 'completed',
+                ],
+            ],
+        ]);
+
+        $result = $converter->convert(new RawHttpResult($httpResponse));
+
+        $this->assertInstanceOf(CustomToolCallResult::class, $result);
+        $this->assertSame('x_keyword_search', $result->getName());
+        $this->assertSame('{"query": "BETR stock"}', $result->getInput());
+        $this->assertSame('{"query": "BETR stock"}', $result->getContent());
+        $this->assertSame('ctc_123', $result->getId());
+        $this->assertSame('completed', $result->getStatus());
+    }
+
+    public function testConvertCustomToolCallResultWithMissingIdAndStatus()
+    {
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $httpResponse->method('toArray')->willReturn([
+            'output' => [
+                [
+                    'type' => 'custom_tool_call',
+                    'name' => 'x_keyword_search',
+                    'input' => '{"query": "BETR stock"}',
+                ],
+            ],
+        ]);
+
+        $result = $converter->convert(new RawHttpResult($httpResponse));
+
+        $this->assertInstanceOf(CustomToolCallResult::class, $result);
+        $this->assertNull($result->getId());
+        $this->assertNull($result->getStatus());
+    }
+
+    public function testConvertCustomToolCallResultPreservesFreeformInputVerbatim()
+    {
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $httpResponse->method('toArray')->willReturn([
+            'output' => [
+                [
+                    'type' => 'custom_tool_call',
+                    'id' => 'ctc_456',
+                    'name' => 'run_sql',
+                    'input' => 'SELECT * FROM users',
+                ],
+            ],
+        ]);
+
+        $result = $converter->convert(new RawHttpResult($httpResponse));
+
+        $this->assertInstanceOf(CustomToolCallResult::class, $result);
+        $this->assertSame('SELECT * FROM users', $result->getInput());
+    }
+
+    public function testConvertCustomToolCallAlongsideMessageDoesNotBecomeToolCallResult()
+    {
+        // Regression test: xAI's x_search reports its own sub-calls (e.g. "x_keyword_search")
+        // as custom_tool_call items next to the assistant's already-generated answer. They must
+        // NOT be surfaced as a ToolCallResult, since AgentProcessor would then try to execute
+        // "x_keyword_search" against the application's own Toolbox and fail -- the provider has
+        // already resolved the call by the time it is reported.
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $httpResponse->method('toArray')->willReturn([
+            'output' => [
+                [
+                    'type' => 'custom_tool_call',
+                    'id' => 'ctc_123',
+                    'call_id' => 'xs_call_123',
+                    'name' => 'x_keyword_search',
+                    'input' => '{"query": "BETR stock"}',
+                    'status' => 'completed',
+                ],
+                [
+                    'type' => 'message',
+                    'role' => 'assistant',
+                    'content' => [[
+                        'type' => 'output_text',
+                        'text' => 'Sentiment is bearish.',
+                    ]],
+                ],
+            ],
+        ]);
+
+        $result = $converter->convert(new RawHttpResult($httpResponse));
+
+        $this->assertNotInstanceOf(ToolCallResult::class, $result);
+        $this->assertInstanceOf(MultiPartResult::class, $result);
+        $parts = $result->getContent();
+        $this->assertCount(2, $parts);
+        $this->assertInstanceOf(CustomToolCallResult::class, $parts[0]);
+        $this->assertSame('x_keyword_search', $parts[0]->getName());
+        $this->assertInstanceOf(TextResult::class, $parts[1]);
+        $this->assertSame('Sentiment is bearish.', $parts[1]->getContent());
+    }
+
+    public function testConvertFunctionCallAlongsideCustomToolCall()
+    {
+        $converter = new ResultConverter();
+        $httpResponse = $this->createMock(ResponseInterface::class);
+        $httpResponse->method('toArray')->willReturn([
+            'output' => [
+                [
+                    'type' => 'function_call',
+                    'id' => 'call_123',
+                    'name' => 'test_function',
+                    'arguments' => '{"arg1": "value1"}',
+                ],
+                [
+                    'type' => 'custom_tool_call',
+                    'id' => 'ctc_123',
+                    'name' => 'x_keyword_search',
+                    'input' => '{"query": "BETR stock"}',
+                ],
+            ],
+        ]);
+
+        $result = $converter->convert(new RawHttpResult($httpResponse));
+
+        $this->assertInstanceOf(MultiPartResult::class, $result);
+        $parts = $result->getContent();
+        $this->assertCount(2, $parts);
+        $this->assertInstanceOf(CustomToolCallResult::class, $parts[0]);
+        $this->assertInstanceOf(ToolCallResult::class, $parts[1]);
+        $toolCalls = $parts[1]->getContent();
+        $this->assertCount(1, $toolCalls);
+        $this->assertSame('test_function', $toolCalls[0]->getName());
     }
 
     public function testConvertMultipleMessagesIntoMultiPartResult()
@@ -1377,6 +1522,44 @@ final class ResultConverterTest extends TestCase
         $this->assertCount(2, $toolCalls);
         $this->assertSame('call_1', $toolCalls[0]->getId());
         $this->assertSame('call_2', $toolCalls[1]->getId());
+    }
+
+    public function testStreamIgnoresCustomToolCallOutputItemDone()
+    {
+        // Like the other built-in server-side tool calls (web_search_call, mcp_call, ...),
+        // custom_tool_call results are only available on non-streamed responses, so it must not
+        // be surfaced as a ToolCallComplete during streaming.
+        $converter = new ResultConverter();
+
+        $httpResponse = $this->createStub(ResponseInterface::class);
+        $httpResponse->method('getStatusCode')->willReturn(200);
+
+        $events = [
+            [
+                'type' => 'response.output_item.done',
+                'item' => [
+                    'type' => 'custom_tool_call',
+                    'id' => 'ctc_123',
+                    'name' => 'x_keyword_search',
+                    'input' => '{"query": "BETR stock"}',
+                ],
+            ],
+            [
+                'type' => 'response.completed',
+                'response' => [
+                    'output' => [],
+                ],
+            ],
+        ];
+
+        $raw = new InMemoryRawResult([], $events, $httpResponse);
+        $streamResult = $converter->convert($raw, ['stream' => true]);
+
+        $chunks = iterator_to_array($streamResult->getContent());
+
+        $this->assertCount(1, $chunks);
+        $this->assertInstanceOf(MetadataDelta::class, $chunks[0]);
+        $this->assertTrue($chunks[0]->getValue()->is(FinishReasonCase::STOP));
     }
 
     public function testStreamThrowsClearExceptionForMalformedToolCallArguments()

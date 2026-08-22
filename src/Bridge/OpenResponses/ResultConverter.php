@@ -25,6 +25,7 @@ use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\BinaryResult;
 use Symfony\AI\Platform\Result\CodeExecutionResult;
 use Symfony\AI\Platform\Result\ComputerCallResult;
+use Symfony\AI\Platform\Result\CustomToolCallResult;
 use Symfony\AI\Platform\Result\ExecutableCodeResult;
 use Symfony\AI\Platform\Result\FileSearchResult;
 use Symfony\AI\Platform\Result\LocalShellCallResult;
@@ -71,7 +72,8 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  * @phpstan-type McpApprovalRequest array{type: 'mcp_approval_request', id?: string, server_label?: string, name?: string, arguments?: string}
  * @phpstan-type ComputerCall array{type: 'computer_call', id?: string, status?: string, call_id?: string, action?: array<string, mixed>, pending_safety_checks?: list<array{id: string, code?: string|null, message?: string|null}>}
  * @phpstan-type LocalShellCall array{type: 'local_shell_call', id?: string, status?: string, call_id?: string, action?: array{type?: string, command?: list<string>}}
- * @phpstan-type OutputItem OutputMessage|FunctionCall|Thinking|WebSearchCall|FileSearchCall|CodeInterpreterCall|ImageGenerationCall|McpCall|McpListTools|McpApprovalRequest|ComputerCall|LocalShellCall
+ * @phpstan-type CustomToolCall array{type: 'custom_tool_call', id?: string, status?: string, name: string, input: string}
+ * @phpstan-type OutputItem OutputMessage|FunctionCall|Thinking|WebSearchCall|FileSearchCall|CodeInterpreterCall|ImageGenerationCall|McpCall|McpListTools|McpApprovalRequest|ComputerCall|LocalShellCall|CustomToolCall
  */
 class ResultConverter implements ResultConverterInterface
 {
@@ -266,8 +268,9 @@ class ResultConverter implements ResultConverterInterface
         $type = $item['type'] ?? null;
 
         // Built-in server-side tool calls (web search, file search, code
-        // interpreter, image generation, computer use, local shell, hosted MCP)
-        // are reported as their own output items next to the assistant message.
+        // interpreter, image generation, computer use, local shell, hosted MCP,
+        // provider-specific custom tools) are reported as their own output items
+        // next to the assistant message, already resolved by the provider.
         // Convert them into typed results so consumers can introspect what the
         // model did, while the message item is still converted as usual.
         return match ($type) {
@@ -282,6 +285,7 @@ class ResultConverter implements ResultConverterInterface
             'mcp_call' => $this->convertMcpCall($item),
             'mcp_list_tools' => $this->convertMcpListTools($item),
             'mcp_approval_request' => $this->convertMcpApprovalRequest($item),
+            'custom_tool_call' => $this->convertCustomToolCall($item),
             default => throw new RuntimeException(\sprintf('Unsupported output type "%s".', $type)),
         };
     }
@@ -430,6 +434,21 @@ class ResultConverter implements ResultConverterInterface
             $item['name'] ?? '',
             $item['arguments'] ?? null,
             $item['id'] ?? null,
+        )];
+    }
+
+    /**
+     * @param CustomToolCall $item
+     *
+     * @return list<CustomToolCallResult>
+     */
+    private function convertCustomToolCall(array $item): array
+    {
+        return [new CustomToolCallResult(
+            $item['name'],
+            $item['input'],
+            $item['id'] ?? null,
+            $item['status'] ?? null,
         )];
     }
 
