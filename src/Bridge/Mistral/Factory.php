@@ -11,6 +11,7 @@
 
 namespace Symfony\AI\Platform\Bridge\Mistral;
 
+use Symfony\AI\Platform\Bridge\Mistral\Contract\AssistantMessageNormalizer;
 use Symfony\AI\Platform\Bridge\Mistral\Contract\AudioNormalizer;
 use Symfony\AI\Platform\Bridge\Mistral\Contract\DocumentNormalizer;
 use Symfony\AI\Platform\Bridge\Mistral\Contract\DocumentUrlNormalizer;
@@ -52,6 +53,7 @@ final class Factory
             [new Embeddings\ResultConverter(), new Llm\ResultConverter(), new Ocr\ResultConverter(), new SpeechToText\ResultConverter()],
             $modelCatalog,
             $contract ?? Contract::create([
+                new AssistantMessageNormalizer(),
                 new ToolNormalizer(),
                 new DocumentNormalizer(),
                 new DocumentUrlNormalizer(),
