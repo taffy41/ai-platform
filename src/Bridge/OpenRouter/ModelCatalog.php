@@ -974,6 +974,17 @@ final class ModelCatalog extends AbstractOpenRouterModelCatalog
                     Capability::TOOL_CALLING,
                 ],
             ],
+            'deepseek/deepseek-v4-flash-vision-exp:batch' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_TEXT,
+                    Capability::INPUT_IMAGE,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::OUTPUT_STRUCTURED,
+                    Capability::TOOL_CALLING,
+                ],
+            ],
             'deepseek/deepseek-v4-flash:free' => [
                 'class' => CompletionsModel::class,
                 'capabilities' => [
@@ -1007,6 +1018,17 @@ final class ModelCatalog extends AbstractOpenRouterModelCatalog
                 'class' => CompletionsModel::class,
                 'capabilities' => [
                     Capability::INPUT_TEXT,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::OUTPUT_STRUCTURED,
+                    Capability::TOOL_CALLING,
+                ],
+            ],
+            'deepseek/deepseek-v4.1-flash' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_TEXT,
+                    Capability::INPUT_IMAGE,
                     Capability::OUTPUT_TEXT,
                     Capability::OUTPUT_STREAMING,
                     Capability::OUTPUT_STRUCTURED,
@@ -1700,6 +1722,16 @@ final class ModelCatalog extends AbstractOpenRouterModelCatalog
                     Capability::TOOL_CALLING,
                 ],
             ],
+            'inception/mercury-2.5' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_TEXT,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::OUTPUT_STRUCTURED,
+                    Capability::TOOL_CALLING,
+                ],
+            ],
             'inception/mercury-2.5-preview' => [
                 'class' => CompletionsModel::class,
                 'capabilities' => [
@@ -1767,6 +1799,29 @@ final class ModelCatalog extends AbstractOpenRouterModelCatalog
                     Capability::TOOL_CALLING,
                 ],
             ],
+            'inclusionai/ling-3.0-flash-vl' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_TEXT,
+                    Capability::INPUT_IMAGE,
+                    Capability::INPUT_VIDEO,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::OUTPUT_STRUCTURED,
+                    Capability::TOOL_CALLING,
+                ],
+            ],
+            'inclusionai/ling-3.0-flash-vl:free' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_TEXT,
+                    Capability::INPUT_IMAGE,
+                    Capability::INPUT_VIDEO,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::TOOL_CALLING,
+                ],
+            ],
             'inclusionai/ling-3.0-flash:free' => [
                 'class' => CompletionsModel::class,
                 'capabilities' => [
@@ -1792,6 +1847,24 @@ final class ModelCatalog extends AbstractOpenRouterModelCatalog
                     Capability::OUTPUT_TEXT,
                     Capability::OUTPUT_STREAMING,
                     Capability::TOOL_CALLING,
+                ],
+            ],
+            'inference-net/schematron-v2-small' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_TEXT,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::OUTPUT_STRUCTURED,
+                ],
+            ],
+            'inference-net/schematron-v2-turbo' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_TEXT,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::OUTPUT_STRUCTURED,
                 ],
             ],
             'inflection/inflection-3-pi' => [
@@ -2788,6 +2861,28 @@ final class ModelCatalog extends AbstractOpenRouterModelCatalog
                 ],
             ],
             'nex-agi/nex-n2-pro:free' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_TEXT,
+                    Capability::INPUT_IMAGE,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::OUTPUT_STRUCTURED,
+                    Capability::TOOL_CALLING,
+                ],
+            ],
+            'nex-agi/nex-n2.5-mini:free' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_TEXT,
+                    Capability::INPUT_IMAGE,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::OUTPUT_STRUCTURED,
+                    Capability::TOOL_CALLING,
+                ],
+            ],
+            'nex-agi/nex-n2.5-pro:free' => [
                 'class' => CompletionsModel::class,
                 'capabilities' => [
                     Capability::INPUT_TEXT,
@@ -5170,11 +5265,35 @@ final class ModelCatalog extends AbstractOpenRouterModelCatalog
                     Capability::TOOL_CALLING,
                 ],
             ],
+            'sakana/fugu-max' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_TEXT,
+                    Capability::INPUT_IMAGE,
+                    Capability::INPUT_PDF,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::OUTPUT_STRUCTURED,
+                    Capability::TOOL_CALLING,
+                ],
+            ],
             'sakana/fugu-ultra' => [
                 'class' => CompletionsModel::class,
                 'capabilities' => [
                     Capability::INPUT_TEXT,
                     Capability::INPUT_IMAGE,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::OUTPUT_STRUCTURED,
+                    Capability::TOOL_CALLING,
+                ],
+            ],
+            'sakana/fugu-ultra-v2' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_TEXT,
+                    Capability::INPUT_IMAGE,
+                    Capability::INPUT_PDF,
                     Capability::OUTPUT_TEXT,
                     Capability::OUTPUT_STREAMING,
                     Capability::OUTPUT_STRUCTURED,
@@ -5882,6 +6001,16 @@ final class ModelCatalog extends AbstractOpenRouterModelCatalog
                     Capability::TOOL_CALLING,
                 ],
             ],
+            'z-ai/glm-5.3:batch' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_TEXT,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::OUTPUT_STRUCTURED,
+                    Capability::TOOL_CALLING,
+                ],
+            ],
             'z-ai/glm-5v-turbo' => [
                 'class' => CompletionsModel::class,
                 'capabilities' => [
@@ -5990,6 +6119,18 @@ final class ModelCatalog extends AbstractOpenRouterModelCatalog
                     Capability::TOOL_CALLING,
                 ],
             ],
+            '~openai/gpt-astra-latest' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_PDF,
+                    Capability::INPUT_IMAGE,
+                    Capability::INPUT_TEXT,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::OUTPUT_STRUCTURED,
+                    Capability::TOOL_CALLING,
+                ],
+            ],
             '~openai/gpt-latest' => [
                 'class' => CompletionsModel::class,
                 'capabilities' => [
@@ -6002,7 +6143,43 @@ final class ModelCatalog extends AbstractOpenRouterModelCatalog
                     Capability::TOOL_CALLING,
                 ],
             ],
+            '~openai/gpt-luna-latest' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_PDF,
+                    Capability::INPUT_IMAGE,
+                    Capability::INPUT_TEXT,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::OUTPUT_STRUCTURED,
+                    Capability::TOOL_CALLING,
+                ],
+            ],
             '~openai/gpt-mini-latest' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_PDF,
+                    Capability::INPUT_IMAGE,
+                    Capability::INPUT_TEXT,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::OUTPUT_STRUCTURED,
+                    Capability::TOOL_CALLING,
+                ],
+            ],
+            '~openai/gpt-sol-latest' => [
+                'class' => CompletionsModel::class,
+                'capabilities' => [
+                    Capability::INPUT_PDF,
+                    Capability::INPUT_IMAGE,
+                    Capability::INPUT_TEXT,
+                    Capability::OUTPUT_TEXT,
+                    Capability::OUTPUT_STREAMING,
+                    Capability::OUTPUT_STRUCTURED,
+                    Capability::TOOL_CALLING,
+                ],
+            ],
+            '~openai/gpt-terra-latest' => [
                 'class' => CompletionsModel::class,
                 'capabilities' => [
                     Capability::INPUT_PDF,
